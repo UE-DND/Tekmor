@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="tile-bg" x1="54" y1="0.5" x2="54" y2="107.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" />
+      <stop offset="1" stop-color="#F3F7FC" />
+    </linearGradient>
+    <linearGradient id="lower-ribbon" x1="28" y1="56" x2="66" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#08B9AE" />
+      <stop offset="1" stop-color="#087FE0" />
+    </linearGradient>
+    <linearGradient id="pulse-grad" x1="39.5" y1="55" x2="68.5" y2="55" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0068B7" />
+      <stop offset="1" stop-color="#087FE0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Continuous macOS squircle tile -->
+  <path
+    id="icon-background"
+    d="M26.50 0.50 H81.50 C96.91 0.50 107.50 11.09 107.50 26.50 V81.50 C107.50 96.91 96.91 107.50 81.50 107.50 H26.50 C11.09 107.50 0.50 96.91 0.50 81.50 V26.50 C0.50 11.09 11.09 0.50 26.50 0.50 Z"
+    fill="url(#tile-bg)"
+    stroke="#CBD7E6"
+    stroke-opacity="0.72"
+    stroke-width="0.8"
+  />
+
+  <!-- Minimal geometric chip pins -->
+  <g fill="none" stroke-width="5.4" stroke-linecap="round">
+    <path d="M42 15.5V23 M66 15.5V23 M92.5 42H85 M15.5 42H23" stroke="#7AB5EE" />
+    <path d="M15.5 66H23 M42 92.5V85" stroke="#52C9C0" />
+    <path d="M92.5 66H85 M66 92.5V85" stroke="#EFC879" />
+  </g>
+
+  <!-- Outer chip ribbon frame -->
+  <g fill="none" stroke-width="11.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 54V42A14 14 0 0 1 42 28H66A14 14 0 0 1 80 42V45" stroke="#087FE0" />
+    <path d="M28 54V66A14 14 0 0 0 42 80H66.5" stroke="url(#lower-ribbon)" />
+    <path d="M65 80H66A14 14 0 0 0 80 66V63" stroke="#E6AD45" />
+  </g>
+
+  <!-- Inner digital signal pulse wave -->
+  <path
+    d="M39.5 55H45.8L51 43L57.2 65L62.2 55H68.5"
+    fill="none"
+    stroke="url(#pulse-grad)"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

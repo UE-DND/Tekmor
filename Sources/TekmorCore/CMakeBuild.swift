@@ -1,0 +1,369 @@
+import CryptoKit
+import Foundation
+
+public struct BuildSelection: Sendable {
+  public let targets: [String]
+  public let directory: URL
+  fileprivate let artifacts: [String: URL]
+  fileprivate let project: URL
+  public let generator: String
+  public let toolsDescription: String
+  fileprivate let cli: CubeCLI
+}
+
+public struct CMakeBuild: Sendable {
+  public static let defaultCache = URL.cachesDirectory.appendingPathComponent(
+    "Tekmor/Builds", isDirectory: true)
+  private let cache: URL
+
+  public init(cache: URL = Self.defaultCache) {
+    self.cache = cache
+  }
+
+  public static func sortedPresets(_ names: [String]) -> [String] {
+    Set(names).sorted { left, right in
+      if (left == "Debug") != (right == "Debug") { return left == "Debug" }
+      return left.localizedStandardCompare(right) == .orderedAscending
+    }
+  }
+
+  public func presets(in project: URL, cli: CubeCLI) async throws -> [String] {
+    let manager = FileManager.default
+    guard
+      manager.fileExists(atPath: project.appendingPathComponent("CMakePresets.json").path)
+        || manager.fileExists(atPath: project.appendingPathComponent("CMakeUserPresets.json").path)
+    else {
+      return []
+    }
+    let result = try await cli.run(["cmake", "--list-presets=configure"], in: project)
+    try result.requireSuccess(
+      TekmorLocalization.core(
+        .init(
+          "core.cmake.opListPresets", defaultValue: "Listing CMake configure presets",
+          bundle: .atURL(Bundle.module.bundleURL))))
+    return result.output.split(whereSeparator: \.isNewline).compactMap { line in
+      let trimmed = line.trimmingCharacters(in: .whitespaces)
+      guard trimmed.first == "\"" else { return nil }
+      return trimmed.dropFirst().split(separator: "\"", maxSplits: 1).first.map(String.init)
+    }
+  }
+
+  public func configure(
+    project: URL, options: CMakeSettings, cli: CubeCLI, log: @escaping ToolLog = { _ in }
+  ) async throws -> BuildSelection {
+    let files = FileManager.default
+    let project = project.resolvingSymlinksInPath()
+    let runtime = try await cli.buildRuntime()
+    let directory = try await buildDirectory(project: project, options: options, runtime: runtime)
+    let query = directory.appendingPathComponent(".cmake/api/v1/query/codemodel-v2")
+    try files.createDirectory(
+      at: query.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data().write(to: query, options: .atomic)
+    try Data().write(
+      to: query.deletingLastPathComponent().appendingPathComponent("toolchains-v1"),
+      options: .atomic)
+    // Each successful configure must produce a new response for this query.
+    let reply = directory.appendingPathComponent(".cmake/api/v1/reply")
+    if files.fileExists(atPath: reply.path) { try files.removeItem(at: reply) }
+
+    var args = ["-S", project.path, "-B", directory.path]
+    if let gcc = runtime.gcc {
+      args += [
+        "-DARM_GNU_ROOT:PATH=\(gcc.deletingLastPathComponent().deletingLastPathComponent().path)",
+        "-DARM_GNU_GCC:FILEPATH=\(gcc.path)",
+      ]
+    }
+    if let preset = options.configurePreset {
+      args.insert(contentsOf: ["--preset", preset], at: 0)
+    } else {
+      guard let toolchain = options.toolchainFile, ProjectConfiguration.isRelative(toolchain) else {
+        throw TekmorError(
+          TekmorLocalization.core(
+            .init(
+              "core.cmake.missingPresetAndToolchain",
+              defaultValue:
+                "This project has no configure presets. Select a CMake toolchain file inside the project.",
+              bundle: .atURL(Bundle.module.bundleURL))))
+      }
+      let toolchainURL = project.appendingPathComponent(toolchain)
+      guard files.fileExists(atPath: toolchainURL.path) else {
+        throw TekmorError(
+          TekmorLocalization.core(
+            .init(
+              "core.cmake.toolchainNotFound",
+              defaultValue: "CMake toolchain file \"\(toolchain)\" not found.",
+              bundle: .atURL(Bundle.module.bundleURL))))
+      }
+      args += ["-G", "Ninja", "--toolchain", toolchainURL.path, "-DCMAKE_BUILD_TYPE=Debug"]
+    }
+    let result = try await runtime.cli.run(["cmake"] + args, in: project, log: log)
+    try result.requireSuccess(
+      TekmorLocalization.core(
+        .init(
+          "core.cmake.opConfigure", defaultValue: "Configuring CMake",
+          bundle: .atURL(Bundle.module.bundleURL))))
+    let indexURL = try files.contentsOfDirectory(at: reply, includingPropertiesForKeys: nil)
+      .first { $0.lastPathComponent.hasPrefix("index-") && $0.pathExtension == "json" }
+    guard let indexURL else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.missingFileAPI",
+            defaultValue: "CMake did not generate a File API target index.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+
+    var index = try load(Index.self, at: indexURL)
+    let generator = index.cmake.generator.name
+    guard ["Unix Makefiles", "Ninja"].contains(generator) else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.unsupportedGenerator",
+            defaultValue: "This preset uses \(generator). Select a Unix Makefiles or Ninja preset.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    if generator == "Unix Makefiles" {
+      try files.removeItem(at: reply)
+      let configured = try await runtime.cli.run(
+        ["cmake"] + args + ["-DCMAKE_MAKE_PROGRAM:FILEPATH=/usr/bin/make"], in: project, log: log)
+      try configured.requireSuccess(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.opConfigure", defaultValue: "Configuring CMake",
+            bundle: .atURL(Bundle.module.bundleURL))))
+      guard
+        let refreshed = try files.contentsOfDirectory(at: reply, includingPropertiesForKeys: nil)
+          .first(where: { $0.lastPathComponent.hasPrefix("index-") && $0.pathExtension == "json" })
+      else {
+        throw TekmorError(
+          TekmorLocalization.core(
+            .init(
+              "core.cmake.missingFileAPI",
+              defaultValue: "CMake did not generate a File API target index.",
+              bundle: .atURL(Bundle.module.bundleURL))))
+      }
+      index = try load(Index.self, at: refreshed)
+    }
+    guard let toolchains = index.reply["toolchains-v1"] else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.missingToolchains",
+            defaultValue: "CMake did not return the selected compiler information.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let compiler = try compilerBundle(
+      at: try jsonFile(toolchains.jsonFile, in: reply), bundles: runtime.bundles)
+    guard let codemodel = index.reply["codemodel-v2"] else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.missingCodeModel", defaultValue: "Failed to read CMake codemodel v2.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let model = try load(CodeModel.self, at: try jsonFile(codemodel.jsonFile, in: reply))
+    var artifacts: [String: URL] = [:]
+    for target in model.configurations.first?.targets ?? [] {
+      let definition = try load(Target.self, at: try jsonFile(target.jsonFile, in: reply))
+      if definition.type == "EXECUTABLE", let artifact = definition.artifacts?.first {
+        let path = URL(filePath: artifact.path, relativeTo: directory).absoluteURL
+        guard isContained(path, in: directory) else {
+          throw TekmorError(
+            TekmorLocalization.core(
+              .init(
+                "core.cmake.artifactOutsideBuildDir",
+                defaultValue:
+                  "The artifact for firmware target \"\(target.name)\" is outside Tekmor's build directory.",
+                bundle: .atURL(Bundle.module.bundleURL))))
+        }
+        artifacts[target.name] = path
+      }
+    }
+    guard !artifacts.isEmpty else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.noExecutableTargets",
+            defaultValue: "This CMake configuration contains no executable firmware targets.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    return BuildSelection(
+      targets: artifacts.keys.sorted(), directory: directory, artifacts: artifacts,
+      project: project, generator: generator,
+      toolsDescription: "\(compiler.name) \(compiler.version) · \(generator)", cli: runtime.cli)
+  }
+
+  public func build(
+    _ target: String, selection: BuildSelection, log: @escaping ToolLog = { _ in }
+  ) async throws -> URL {
+    guard !target.hasPrefix("-"), let artifact = selection.artifacts[target] else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.selectTarget",
+            defaultValue: "Select a firmware target from the current CMake configuration.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let result = try await selection.cli.run(
+      [
+        "cmake", "--build", selection.directory.path, "--target", target, "--parallel",
+        String(min(8, ProcessInfo.processInfo.activeProcessorCount)),
+      ],
+      in: selection.project, log: log
+    )
+    try result.requireSuccess(
+      TekmorLocalization.core(
+        .init(
+          "core.cmake.opBuild", defaultValue: "Building \(target)",
+          bundle: .atURL(Bundle.module.bundleURL))))
+    guard isContained(artifact, in: selection.directory),
+      (try? artifact.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.artifactNotFound",
+            defaultValue: "ELF artifact for firmware target \"\(target)\" not found.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    return artifact
+  }
+
+  private func buildDirectory(project: URL, options: CMakeSettings, runtime: CubeBuildRuntime)
+    async throws -> URL
+  {
+    var identity = [
+      project.path, options.configurePreset ?? "", options.toolchainFile ?? "",
+      runtime.cli.executable.path, try await runtime.cli.version(),
+    ]
+    let resolved = try await runtime.cli.resolve("cmake")
+    let parsed = try JSONSerialization.jsonObject(with: resolved)
+    let canonical = try JSONSerialization.data(withJSONObject: parsed, options: [.sortedKeys])
+    identity.append(String(decoding: canonical, as: UTF8.self))
+    identity += runtime.bundles.map { "\($0.id)|\($0.path?.path ?? "")" }
+    identity += try await buildProgramIdentity(environment: runtime.cli.processEnvironment)
+    for path in ["CMakePresets.json", "CMakeUserPresets.json"] {
+      let file = project.appendingPathComponent(path)
+      if FileManager.default.fileExists(atPath: file.path) {
+        identity.append(try CubeInstallation.digest(file))
+      }
+    }
+    if let toolchain = options.toolchainFile {
+      identity.append(try CubeInstallation.digest(project.appendingPathComponent(toolchain)))
+    }
+    let key = SHA256.hash(data: Data(identity.joined(separator: "\0").utf8)).map {
+      String(format: "%02x", $0)
+    }.joined()
+    return cache.appendingPathComponent(key, isDirectory: true)
+  }
+
+  private func buildProgramIdentity(environment: [String: String]) async throws -> [String] {
+    let directories = (environment["PATH"] ?? "").split(separator: ":").map(String.init)
+    var identity: [String] = []
+    for name in ["make", "ninja"] {
+      let candidates =
+        name == "make"
+        ? [URL(filePath: "/usr/bin/make")]
+        : directories.map { URL(filePath: $0).appendingPathComponent(name) }
+      guard
+        let executable = candidates.first(where: {
+          FileManager.default.isExecutableFile(atPath: $0.path)
+            && (try? $0.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey])
+              .isRegularFile) == true
+        })
+      else { continue }
+      let result = try? await CommandRunner().run(
+        executable, ["--version"], environment: environment, timeout: .seconds(10))
+      try Task.checkCancellation()
+      let version = result.flatMap { $0.succeeded ? $0.output : nil } ?? "unavailable"
+      identity += [name, executable.resolvingSymlinksInPath().path, version]
+    }
+    return identity
+  }
+
+  private func compilerBundle(at file: URL, bundles: [CubeBundle]) throws -> CubeBundle {
+    let model = try load(Toolchains.self, at: file)
+    let paths = model.toolchains.compactMap { $0.compiler?.path }
+    guard let first = paths.first else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.compilerMissing", defaultValue: "CMake did not select a C compiler.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let selected = paths.map { path in
+      bundles.first { bundle in
+        guard let root = bundle.path else { return false }
+        return isContained(URL(filePath: path), in: root)
+      }
+    }
+    guard selected.allSatisfy({ $0 != nil }),
+      let bundle = bundles.first(where: {
+        $0.path.map { isContained(URL(filePath: first), in: $0) } ?? false
+      })
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.compilerOutsideCube",
+            defaultValue:
+              "The project compiler is outside the selected Cube bundles. Check its preset and toolchain file.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    return bundle
+  }
+
+  private func isContained(_ url: URL, in directory: URL) -> Bool {
+    url.resolvingSymlinksInPath().path.hasPrefix(directory.resolvingSymlinksInPath().path + "/")
+  }
+
+  private func jsonFile(_ filename: String, in directory: URL) throws -> URL {
+    let url = directory.appendingPathComponent(filename)
+    guard isContained(url, in: directory) else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.fileAPIOutsideDir",
+            defaultValue: "The CMake File API reply references a file outside the build directory.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    return url
+  }
+
+  private func load<T: Decodable>(_ type: T.Type, at url: URL) throws -> T {
+    try JSONDecoder().decode(type, from: Data(contentsOf: url))
+  }
+
+  private struct Reference: Decodable { let jsonFile: String }
+  private struct Index: Decodable {
+    struct CMake: Decodable {
+      struct Generator: Decodable { let name: String }
+      let generator: Generator
+    }
+    let cmake: CMake
+    let reply: [String: Reference]
+  }
+  private struct CodeModel: Decodable {
+    struct Configuration: Decodable {
+      struct Target: Decodable {
+        let name: String
+        let jsonFile: String
+      }
+      let targets: [Target]
+    }
+    let configurations: [Configuration]
+  }
+  private struct Target: Decodable {
+    struct Artifact: Decodable { let path: String }
+    let type: String
+    let artifacts: [Artifact]?
+  }
+  private struct Toolchains: Decodable {
+    struct Toolchain: Decodable {
+      struct Compiler: Decodable { let path: String? }
+      let compiler: Compiler?
+    }
+    let toolchains: [Toolchain]
+  }
+}

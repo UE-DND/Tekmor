@@ -1,0 +1,104 @@
+/* CommandRunner */
+"core.command.failedNoDetail" = "%@ failed (exit code %d).";
+"core.command.failedWithDetail" = "%@ failed (exit code %d)\n%@";
+"core.command.timeout" = "Operation timed out. Check the tool and device connection, then try again.";
+
+/* Project & Template */
+"core.serial.invalidSettings" = "Select a supported baud rate and stop bits.";
+"core.project.invalidMCU" = "Enter a full STM32 part number, or leave the expected MCU blank.";
+"core.project.invalidToolchainPath" = "Without a preset, the CMake toolchain file must be a relative path inside the project.";
+"core.project.invalidPresetName" = "Invalid CMake preset name.";
+"core.project.invalidTargetName" = "Invalid CMake target name.";
+
+
+/* CMakeBuild */
+"core.cmake.opListPresets" = "Listing CMake configure presets";
+"core.cmake.missingPresetAndToolchain" = "This project has no configure presets. Select a CMake toolchain file inside the project.";
+"core.cmake.toolchainNotFound" = "CMake toolchain file \"%@\" not found.";
+"core.cmake.opConfigure" = "Configuring CMake";
+"core.cmake.missingFileAPI" = "CMake did not generate a File API target index.";
+"core.cmake.unsupportedGenerator" = "This preset uses %@. Select a Unix Makefiles or Ninja preset.";
+"core.cmake.missingCodeModel" = "Failed to read CMake codemodel v2.";
+"core.cmake.artifactOutsideBuildDir" = "The artifact for firmware target \"%@\" is outside Tekmor's build directory.";
+"core.cmake.noExecutableTargets" = "This CMake configuration contains no executable firmware targets.";
+"core.cmake.selectTarget" = "Select a firmware target from the current CMake configuration.";
+"core.cmake.opBuild" = "Building %@";
+"core.cmake.artifactNotFound" = "ELF artifact for firmware target \"%@\" not found.";
+"core.cmake.fileAPIOutsideDir" = "The CMake File API reply references a file outside the build directory.";
+
+/* Hardware */
+"core.hardware.serialDisconnected" = "Serial port disconnected. Reconnect it and select the port again.";
+"core.hardware.serialPortDisconnected" = "Serial port %@ disconnected.";
+"core.hardware.serialOpenFailed" = "Cannot open serial port %@. Close any program using it and check access permissions.";
+"core.hardware.serialConfigFailed" = "Cannot configure serial port %@ (%@). Check the USB connection.";
+
+"core.firmware.incompleteProgramHeaders" = "Incomplete ELF program headers.";
+
+/* FirmwareImage (Generic) */
+"core.image.invalidFile" = "Select a non-empty regular firmware file up to 64 MiB.";
+"core.image.missingBinaryAddress" = "Enter a valid 32-bit start address for the BIN file.";
+"core.image.unsupportedFormat" = "Select an ELF, Intel HEX, or BIN firmware file.";
+"core.image.invalidSegments" = "Firmware contains empty segments, overlapping addresses, or a 32-bit address overflow.";
+"core.image.noWritableData" = "Firmware contains no writable data.";
+"core.image.unknownFlashCapacity" = "Cannot verify firmware addresses because the target internal Flash capacity is unknown.";
+"core.image.addressOutOfFlash" = "Firmware address range %@ exceeds target internal Flash %@.";
+"core.image.invalidARMELF" = "Select a valid 32-bit ARM executable ELF.";
+"core.image.truncatedLoadSegment" = "ELF load segment is truncated or has an invalid size.";
+"core.image.invalidHexEncoding" = "Invalid Intel HEX encoding.";
+"core.image.invalidHexRecord" = "Invalid Intel HEX record on line %lld.";
+"core.image.missingHexEOF" = "Intel HEX is missing an end-of-file record.";
+
+/* FlashProgrammer */
+"core.flash.timeoutResetConfirmed" = "The tool timed out after confirming firmware verification and reset. See the log for details.";
+"core.flash.timeoutResetUnconfirmed" = "The tool timed out. The firmware was verified, but reset was not confirmed.";
+"core.flash.timeoutVerified" = "The tool timed out after verifying the firmware. The reset step was not started.";
+"core.flash.timeoutBeforeWrite" = "The tool timed out before writing firmware. Check the target and see the log for details.";
+"core.flash.timeoutWriteUnknown" = "Flashing timed out. The firmware write state is unknown. Check the target and see the log for details.";
+
+/* CubeCLI & CubeProgrammer */
+"core.cube.opCheck" = "Checking CubeCLI";
+"core.cube.missingVersion" = "CubeCLI did not return a version.";
+"core.cube.opResolveCommand" = "Resolving CubeCLI command \"%@\"";
+"core.cube.invalidCommandInfo" = "CubeCLI did not return valid command info for \"%@\".";
+"core.cube.programmerInvalidChipID" = "CubeProgrammer did not return a valid chip ID.";
+"core.cube.unsupportedDeviceType" = "Target device (%@) is not an STM32 MCU supported by this flashing flow.";
+"core.cube.ambiguousProbe" = "Cannot distinguish the selected ST-LINK. Keep only the target probe connected.";
+"core.cube.connectFailed" = "Failed to connect to target: %@";
+"core.cube.opReadChip" = "Reading chip information";
+"core.cube.targetChanged" = "Target chip information changed. Re-read and confirm the target.";
+"core.cube.writeFailed" = "CubeProgrammer write or verification failed. See log for details.";
+"core.cube.resetUnconfirmed" = "Write verified, but SWD reset was not confirmed. Check the log or reset manually.";
+"core.cube.connectionLostBefore" = "Target port or ST-LINK was disconnected or changed.";
+"core.cube.connectionLostDuring" = "Connection to the target was lost during the operation.";
+
+"core.workflow.openProjectFirst" = "Open an existing CMake project first.";
+"core.workflow.requireCube" = "Install STM32CubeCLI in Tools first.";
+"core.workflow.targetMismatch" = "Connected target %@ does not match expected project MCU %@.";
+
+/* CubeCLI */
+"core.cmake.compilerMissing" = "CMake did not select a C compiler.";
+"core.cmake.compilerOutsideCube" = "The project compiler is outside the selected Cube bundles. Check its preset and toolchain file.";
+"core.cube.compilerUnavailable" = "The Cube-managed GCC compiler is unavailable. Prepare build tools again.";
+"core.cube.downloadFailed" = "Failed to download STM32CubeCLI. Check the network connection and try again.";
+"core.cube.installInProgress" = "CubeCLI installation is already running.";
+"core.cube.invalidBundleInfo" = "CubeCLI returned invalid installed bundle information.";
+"core.cube.invalidInstallation" = "The CubeCLI package has an invalid executable layout.";
+"core.cube.missingBuildBundles" = "Prepare the missing build bundles in Tools. %@";
+"core.cube.missingCompilerBundles" = "This build requires CMake and a Cube-managed compiler bundle. Prepare them in Tools.";
+"core.cube.missingProgrammerBundle" = "Prepare the programmer bundle in Tools.";
+"core.cube.opCheckInstallation" = "Verifying STM32CubeCLI";
+"core.cube.opInstallBundle" = "Installing bundle %@";
+"core.cube.opListBundles" = "Listing installed bundles";
+"core.cube.opPrepareAll" = "Preparing required bundles";
+"core.cube.opPrepareBuild" = "Preparing build bundles";
+"core.cube.opPrepareProgrammer" = "Preparing the programmer bundle";
+"core.cube.opUnpack" = "Unpacking STM32CubeCLI";
+"core.cube.sha256Mismatch" = "STM32CubeCLI SHA-256 verification failed.";
+"core.cube.unexpectedVersion" = "The CubeCLI package returned an unexpected version.";
+"core.cube.unsupportedBundle" = "Unsupported CubeCLI bundle \"%@\".";
+"core.cube.downloadBootstrapLog" = "Downloading STM32CubeCLI %@";
+"core.cube.installedBootstrapLog" = "Installed STM32CubeCLI %@";
+"core.cube.commandUnavailable" = "CubeCLI command %@ is unavailable. Prepare its bundle in Tools.";
+"core.cmake.missingToolchains" = "CMake did not return the selected compiler information.";
+"core.cube.invalidDirectory" = "The tool installation directory path cannot contain a colon.";
+"core.cube.makeUnavailable" = "System Make is unavailable. Unix Makefiles builds require Make.";

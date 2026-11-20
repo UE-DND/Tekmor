@@ -1,0 +1,53 @@
+name: Tekmor 0.1 release candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Swift core
+        run: swift test
+      - name: Sign and notarize release candidate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          keychain="$RUNNER_TEMP/tekmor-signing.keychain-db"
+          certificate="$RUNNER_TEMP/tekmor-signing.p12"
+          keychain_password="$(openssl rand -hex 24)"
+          trap '/usr/bin/security delete-keychain "$keychain" >/dev/null 2>&1 || true; rm -f "$certificate"' EXIT
+          printf '%s' "$APPLE_CERTIFICATE" | /usr/bin/base64 -D > "$certificate"
+          /usr/bin/security create-keychain -p "$keychain_password" "$keychain"
+          /usr/bin/security set-keychain-settings -lut 3600 "$keychain"
+          /usr/bin/security unlock-keychain -p "$keychain_password" "$keychain"
+          /usr/bin/security import "$certificate" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          /usr/bin/security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          /usr/bin/security list-keychains -d user -s "$keychain"
+          xcrun notarytool store-credentials TekmorCI --keychain "$keychain" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          TEKMOR_SIGN_IDENTITY="$APPLE_SIGN_IDENTITY" \
+            TEKMOR_NOTARY_PROFILE=TekmorCI \
+            TEKMOR_NOTARY_KEYCHAIN="$keychain" \
+            Distribution/release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tekmor-0.1.0-candidate
+          if-no-files-found: error
+          path: |
+            .build/release/Tekmor-0.1.0-arm64.dmg
+            .build/release/SHA256SUMS.txt
+            .build/release/*-notarization.json

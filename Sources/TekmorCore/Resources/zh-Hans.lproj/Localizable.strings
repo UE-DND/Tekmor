@@ -1,0 +1,104 @@
+/* CommandRunner */
+"core.command.failedNoDetail" = "%@失败（退出码 %d）。";
+"core.command.failedWithDetail" = "%@失败（退出码 %d）\n%@";
+"core.command.timeout" = "操作超时。请检查工具和设备连接后重试。";
+
+/* Project & Template */
+"core.serial.invalidSettings" = "请选择支持的波特率和停止位。";
+"core.project.invalidMCU" = "请填写 STM32 完整料号，或将预期型号留空。";
+"core.project.invalidToolchainPath" = "未使用预设时，CMake 工具链文件须为项目内的相对路径。";
+"core.project.invalidPresetName" = "CMake 预设名称无效。";
+"core.project.invalidTargetName" = "CMake 目标名称无效。";
+
+
+/* CMakeBuild */
+"core.cmake.opListPresets" = "读取 CMake 配置预设";
+"core.cmake.missingPresetAndToolchain" = "此工程没有配置预设。请选择工程内的 CMake 工具链文件。";
+"core.cmake.toolchainNotFound" = "找不到 CMake 工具链文件 %@。";
+"core.cmake.opConfigure" = "配置 CMake";
+"core.cmake.missingFileAPI" = "CMake 没有生成 File API 目标清单。";
+"core.cmake.unsupportedGenerator" = "此预设使用 %@，请选择 Unix Makefiles 或 Ninja 预设。";
+"core.cmake.missingCodeModel" = "无法读取 CMake codemodel v2。";
+"core.cmake.artifactOutsideBuildDir" = "固件目标 %@ 的产物落在 Tekmor 构建目录之外。";
+"core.cmake.noExecutableTargets" = "该 CMake 配置没有可执行固件目标。";
+"core.cmake.selectTarget" = "请选择当前 CMake 配置中的固件目标。";
+"core.cmake.opBuild" = "构建 %@";
+"core.cmake.artifactNotFound" = "找不到固件目标 %@ 的 ELF 产物。";
+"core.cmake.fileAPIOutsideDir" = "CMake File API 响应引用了目录外的文件。";
+
+/* Hardware */
+"core.hardware.serialDisconnected" = "串口已断开。重新连接后再选择串口。";
+"core.hardware.serialPortDisconnected" = "串口 %@ 已断开。";
+"core.hardware.serialOpenFailed" = "无法打开串口 %@。请关闭占用串口的程序，并检查访问权限。";
+"core.hardware.serialConfigFailed" = "无法配置串口 %@（%@）。请检查 USB 连接。";
+
+"core.firmware.incompleteProgramHeaders" = "ELF 程序头不完整。";
+
+/* FirmwareImage (Generic) */
+"core.image.invalidFile" = "请选择不超过 64 MiB 的非空普通固件文件。";
+"core.image.missingBinaryAddress" = "请为 BIN 文件填写有效的 32 位烧录起始地址。";
+"core.image.unsupportedFormat" = "请选择 ELF、Intel HEX 或 BIN 固件。";
+"core.image.invalidSegments" = "固件包含空加载段、重叠地址或 32 位地址溢出。";
+"core.image.noWritableData" = "固件没有可写入的数据。";
+"core.image.unknownFlashCapacity" = "未能确认目标内部 Flash 容量，无法校验固件地址。";
+"core.image.addressOutOfFlash" = "固件地址 %@ 超出目标内部 Flash %@。";
+"core.image.invalidARMELF" = "请选择有效的 32 位 ARM 可执行 ELF。";
+"core.image.truncatedLoadSegment" = "ELF 加载段截断或大小无效。";
+"core.image.invalidHexEncoding" = "Intel HEX 编码无效。";
+"core.image.invalidHexRecord" = "Intel HEX 第 %lld 条记录无效。";
+"core.image.missingHexEOF" = "Intel HEX 缺少结束记录。";
+
+/* FlashProgrammer */
+"core.flash.timeoutResetConfirmed" = "工具在确认固件校验和复位后超时。详情见日志。";
+"core.flash.timeoutResetUnconfirmed" = "工具超时。固件已校验，复位未确认。";
+"core.flash.timeoutVerified" = "工具在固件校验完成后超时。复位步骤尚未开始。";
+"core.flash.timeoutBeforeWrite" = "工具在写入固件前超时。请检查目标芯片并查看日志。";
+"core.flash.timeoutWriteUnknown" = "烧录超时，固件写入状态未知。请检查目标芯片并查看日志。";
+
+/* CubeCLI & CubeProgrammer */
+"core.cube.opCheck" = "检查 CubeCLI";
+"core.cube.missingVersion" = "CubeCLI 未返回版本。";
+"core.cube.opResolveCommand" = "查找 CubeCLI 的 %@ 命令";
+"core.cube.invalidCommandInfo" = "CubeCLI 未返回有效的 %@ 命令信息。";
+"core.cube.programmerInvalidChipID" = "CubeProgrammer 未返回有效的芯片 ID。";
+"core.cube.unsupportedDeviceType" = "当前目标不是通过此烧录流程支持的 STM32 MCU（%@）。";
+"core.cube.ambiguousProbe" = "无法区分所选 ST-LINK。请只保留目标探针。";
+"core.cube.connectFailed" = "连接目标失败：%@";
+"core.cube.opReadChip" = "读取芯片信息";
+"core.cube.targetChanged" = "目标芯片信息已变化，请重新读取并确认目标。";
+"core.cube.writeFailed" = "CubeProgrammer 写入或回读校验失败。详情见日志。";
+"core.cube.resetUnconfirmed" = "写入已校验，SWD 复位未确认。请查看日志或手动复位。";
+"core.cube.connectionLostBefore" = "目标端口或 ST-LINK 已断开或更换。";
+"core.cube.connectionLostDuring" = "与目标的连接在操作期间中断。";
+
+"core.workflow.openProjectFirst" = "请先打开已有的 CMake 工程。";
+"core.workflow.requireCube" = "请先在工具页安装 STM32CubeCLI。";
+"core.workflow.targetMismatch" = "当前目标 %@ 与工程预期 %@ 不匹配。";
+
+/* CubeCLI */
+"core.cmake.compilerMissing" = "CMake 没有选定 C 编译器。";
+"core.cmake.compilerOutsideCube" = "工程编译器位于选定的 Cube Bundle 之外，请检查预设与工具链文件。";
+"core.cube.compilerUnavailable" = "Cube 管理的 GCC 编译器不可用，请重新准备构建工具。";
+"core.cube.downloadFailed" = "STM32CubeCLI 下载失败，请检查网络连接后重试。";
+"core.cube.installInProgress" = "CubeCLI 正在安装。";
+"core.cube.invalidBundleInfo" = "CubeCLI 返回了无效的已安装 Bundle 信息。";
+"core.cube.invalidInstallation" = "CubeCLI 安装包中的可执行文件结构无效。";
+"core.cube.missingBuildBundles" = "请在工具页准备缺失的构建 Bundle。%@";
+"core.cube.missingCompilerBundles" = "此工程需要 CMake 和 Cube 管理的编译器 Bundle，请在工具页准备。";
+"core.cube.missingProgrammerBundle" = "请在工具页准备 programmer Bundle。";
+"core.cube.opCheckInstallation" = "正在验证 STM32CubeCLI";
+"core.cube.opInstallBundle" = "正在安装 Bundle %@";
+"core.cube.opListBundles" = "正在列出已安装的 Bundle";
+"core.cube.opPrepareAll" = "正在准备所需 Bundle";
+"core.cube.opPrepareBuild" = "正在准备构建 Bundle";
+"core.cube.opPrepareProgrammer" = "正在准备烧录 Bundle";
+"core.cube.opUnpack" = "正在解包 STM32CubeCLI";
+"core.cube.sha256Mismatch" = "STM32CubeCLI 的 SHA-256 校验失败。";
+"core.cube.unexpectedVersion" = "CubeCLI 安装包返回了与预期不符的版本。";
+"core.cube.unsupportedBundle" = "不支持的 CubeCLI Bundle：%@。";
+"core.cube.downloadBootstrapLog" = "正在下载 STM32CubeCLI %@";
+"core.cube.installedBootstrapLog" = "已安装 STM32CubeCLI %@";
+"core.cube.commandUnavailable" = "CubeCLI 命令 %@ 不可用，请在工具页准备所需 Bundle。";
+"core.cmake.missingToolchains" = "CMake 没有返回所选编译器的信息。";
+"core.cube.invalidDirectory" = "工具安装目录的路径不能包含冒号。";
+"core.cube.makeUnavailable" = "系统 Make 不可用，Unix Makefiles 构建需要 Make。";

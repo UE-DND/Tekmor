@@ -1,0 +1,19 @@
+# Swift Package Manager & build artifacts
+.build/
+.swiftpm/
+build/
+DerivedData/
+
+# Xcode user & temporary files
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.dSYM
+*.dSYM.zip
+
+# macOS & editors
+.DS_Store
+.vscode/
+*.swp
+*~
