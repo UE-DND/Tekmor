@@ -4,7 +4,7 @@
 
 # Tekmor
 
-由 CubeCLI 驱动的 STM32 构建、烧录与串口监视工具
+由 CubeCLI 驱动的 STM32 工具箱
 
 **[Ask DeepWiki](https://deepwiki.com/UE-DND/Tekmor)**
 

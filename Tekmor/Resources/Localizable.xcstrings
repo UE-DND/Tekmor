@@ -3819,6 +3819,22 @@
         }
       }
     },
+    "settings.about.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STM32 toolbox powered by CubeCLI"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由 CubeCLI 驱动的 STM32 工具箱"
+          }
+        }
+      }
+    },
     "settings.section.about" : {
       "localizations" : {
         "en" : {
@@ -4765,9 +4781,6 @@
           }
         }
       }
-    },
-    "STM32 · UART / SWD" : {
-      "shouldTranslate" : false
     },
     "Tekmor" : {
       "shouldTranslate" : false

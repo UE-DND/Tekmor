@@ -262,9 +262,12 @@ private struct AboutSettingsTab: View {
               "Tekmor \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0")"
             )
             .font(.system(size: 12.5, weight: .semibold))
-            Text("STM32 · UART / SWD")
-              .font(.system(size: 11, design: .monospaced))
-              .foregroundStyle(TekmorColor.textSecondary)
+            Text(
+              l10n.tr(
+                .init("settings.about.subtitle", defaultValue: "STM32 toolbox powered by CubeCLI"))
+            )
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(TekmorColor.textSecondary)
           }
           Spacer()
         }
