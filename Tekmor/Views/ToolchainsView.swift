@@ -308,7 +308,7 @@ private struct FlatToolRow<Trailing: View>: View {
         if let path {
           Text((path as NSString).abbreviatingWithTildeInPath)
             .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(TekmorColor.textTertiary)
+            .foregroundStyle(TekmorColor.textMuted)
             .lineLimit(1)
             .truncationMode(.middle)
             .textSelection(.enabled)

@@ -60,6 +60,8 @@ enum TekmorColor {
     light: 0x49515C, dark: 0xB4BCC8, highContrast: (0x272D37, 0xE1E7EE))
   static let textTertiary = adaptive(
     light: 0x5C6470, dark: 0xA4ADBB, highContrast: (0x39414D, 0xD5DEEA))
+  static let textMuted = adaptive(
+    light: 0x686F7B, dark: 0x838D9C, highContrast: (0x505969, 0xADBACB))
 
   // MARK: - Hairline Separators
   static let separator = adaptive(light: 0xE2E5EA, dark: 0x3A3A3E)
