@@ -146,11 +146,6 @@ struct MainSplitView: View {
           )
           .disabled(!workspace.canChooseFirmware)
           Divider()
-          if let folder = workspace.projectFolders.first(where: {
-            $0.path == workspace.project?.path
-          }) {
-            ProjectFolderColorMenu(workspace: workspace, folder: folder)
-          }
           Button(
             l10n.tr(.init("action.revealProjectInFinder", defaultValue: "Reveal Project in Finder"))
           ) { workspace.revealProject() }
