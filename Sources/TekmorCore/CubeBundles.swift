@@ -231,6 +231,38 @@ extension CubeCLI {
     _ = try await buildRuntime()
   }
 
+  /// Environment additions for an interactive shell using installed Tekmor tools.
+  public func terminalEnvironment(inheriting environment: [String: String]) async -> [String:
+    String]
+  {
+    async let cmake = resolvedExecutable("cmake")
+    async let ninja = resolvedExecutable("ninja")
+    async let installed = try? installedBundles()
+    let gcc = await installed?.filter { $0.name == "gnu-tools-for-stm32" }
+      .sorted(by: Self.newerBundle).first?.path?
+      .appendingPathComponent("bin/arm-none-eabi-gcc")
+    let tools = await [executable, cmake, ninja, gcc].compactMap { $0 }
+    var paths = tools.filter { FileManager.default.isExecutableFile(atPath: $0.path) }
+      .map { $0.deletingLastPathComponent().path }
+      .filter { !$0.contains(":") }
+    let inherited = environment["PATH"] ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    paths += inherited.split(separator: ":").map(String.init)
+    var seen: Set<String> = []
+    var additions = ["PATH": paths.filter { seen.insert($0).inserted }.joined(separator: ":")]
+    for key in ["CUBE_BUNDLE_PATH", "CUBE_CACHE_PATH", "CUBE_LOG_PATH"] {
+      additions[key] = processEnvironment[key]
+    }
+    return additions
+  }
+
+  private func resolvedExecutable(_ name: String) async -> URL? {
+    guard let data = try? await resolve(name),
+      let command = try? JSONDecoder().decode(ResolvedCommand.self, from: data).command,
+      let path = command.first, path.hasPrefix("/")
+    else { return nil }
+    return URL(filePath: path)
+  }
+
   func buildRuntime() async throws -> CubeBuildRuntime {
     let status = try await toolStatus()
     if let issue = status.buildIssue { throw TekmorError(issue) }

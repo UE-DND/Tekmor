@@ -120,6 +120,19 @@ private struct GeneralSettingsTab: View {
               "settings.showTimestamps",
               defaultValue: "Show timestamps when listening to serial output by default")),
           isOn: $workspace.showTimestamps)
+        Toggle(
+          l10n.tr(
+            .init(
+              "settings.terminalManagedPATH", defaultValue: "Prefer Tekmor tools in new terminals")),
+          isOn: $workspace.terminalUsesManagedTools
+        )
+        .help(
+          l10n.tr(
+            .init(
+              "settings.terminalManagedPATHHelp",
+              defaultValue:
+                "New and restarted sessions skip shell startup files that can reorder the managed PATH."
+            )))
       }
 
       Section(l10n.tr(.init("settings.section.projectDefaults", defaultValue: "Project Defaults")))

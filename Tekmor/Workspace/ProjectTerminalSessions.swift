@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import TekmorCore
 
 @MainActor @Observable
 final class ProjectTerminalSessions {
@@ -8,10 +9,14 @@ final class ProjectTerminalSessions {
 
   func session(for project: URL?) -> ProjectTerminal? { sessions[project] }
 
-  func open(for project: URL?, directory: URL, restart: Bool) {
+  func open(
+    for project: URL?, directory: URL, restart: Bool, managedTools: CubeCLI?, useManagedPath: Bool
+  ) {
     let session = sessions[project] ?? ProjectTerminal(directory: directory)
     if sessions[project] == nil { sessions[project] = session }
-    if session.state == .idle || restart { session.prepare() }
+    if session.state == .idle || restart {
+      session.prepare(managedTools: managedTools, useManagedPath: useManagedPath)
+    }
     requestFocus()
   }
 

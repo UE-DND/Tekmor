@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import SwiftTerm
 import SwiftUI
+import TekmorCore
 
 @MainActor @Observable
 final class ProjectTerminal: LocalProcessTerminalViewDelegate {
@@ -27,6 +28,10 @@ final class ProjectTerminal: LocalProcessTerminalViewDelegate {
     )
   }
 
+  @ObservationIgnored private var launchTask: Task<Void, Never>?
+  @ObservationIgnored private var managedTools: CubeCLI?
+  @ObservationIgnored private var useManagedPath = false
+
   let directory: URL
   private(set) var state: State = .idle
   private(set) var terminalView: WorkbenchTerminalView?
@@ -51,8 +56,10 @@ final class ProjectTerminal: LocalProcessTerminalViewDelegate {
     return terminalView.window?.firstResponder === terminalView
   }
 
-  func prepare() {
+  func prepare(managedTools: CubeCLI?, useManagedPath: Bool) {
     guard !state.isOpen else { return }
+    self.managedTools = managedTools
+    self.useManagedPath = useManagedPath
     closeSearch()
     let view = WorkbenchTerminalView(
       frame: .zero, options: TerminalOptions(ansi256PaletteStrategy: .xterm))
@@ -70,7 +77,7 @@ final class ProjectTerminal: LocalProcessTerminalViewDelegate {
   }
 
   func startIfReady(_ view: WorkbenchTerminalView, using l10n: AppL10n) {
-    guard terminalView === view, state == .starting else { return }
+    guard terminalView === view, state == .starting, launchTask == nil else { return }
 
     let path = directory.path
     var isDirectory: ObjCBool = false
@@ -100,16 +107,48 @@ final class ProjectTerminal: LocalProcessTerminalViewDelegate {
     environment["PWD"] = path
     environment.removeValue(forKey: "OLDPWD")
 
+    if let managedTools {
+      environment.removeValue(forKey: "CUBE_BUNDLE_PATH_EXTRA")
+      launchTask = Task { [weak self, weak view] in
+        let additions = await managedTools.terminalEnvironment(inheriting: environment)
+        guard let self, let view, self.terminalView === view, !Task.isCancelled else { return }
+        self.launchTask = nil
+        environment.merge(additions) { _, managed in managed }
+        self.launch(view, shell: shell, environment: environment)
+      }
+    } else {
+      launch(view, shell: shell, environment: environment)
+    }
+  }
+
+  private func launch(
+    _ view: WorkbenchTerminalView, shell: String, environment: [String: String]
+  ) {
+    let shellName = URL(filePath: shell).lastPathComponent
+    var environment = environment
+    var arguments: [String] = []
+    if useManagedPath {
+      // Interactive startup scripts can move system tools back ahead of the managed PATH.
+      switch shellName {
+      case "zsh", "csh", "tcsh": arguments = ["-f"]
+      case "bash": arguments = ["--norc"]
+      case "fish": arguments = ["--no-config"]
+      default: break
+      }
+      environment.removeValue(forKey: "ENV")
+    }
+
     state = .running
     view.startProcess(
-      executable: shell,
+      executable: shell, args: arguments,
       environment: environment.map { "\($0.key)=\($0.value)" },
-      execName: "-" + URL(filePath: shell).lastPathComponent,
-      currentDirectory: path
-    )
+      execName: useManagedPath ? nil : "-" + shellName,
+      currentDirectory: directory.path)
   }
 
   func stop(escalationDelay: TimeInterval = 0.5) {
+    launchTask?.cancel()
+    launchTask = nil
     closeSearch()
     if let view = terminalView {
       view.onOutputChanged = nil

@@ -6162,6 +6162,38 @@
           }
         }
       }
+    },
+    "settings.terminalManagedPATH" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prefer Tekmor tools in new terminals"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新终端优先使用 Tekmor 工具链"
+          }
+        }
+      }
+    },
+    "settings.terminalManagedPATHHelp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New and restarted sessions skip shell startup files that can reorder the managed PATH."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建或重启的会话跳过可能重排托管 PATH 的 shell 启动脚本。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -316,6 +316,10 @@ final class Workspace {
     didSet { preferences.set(externalEditor.rawValue, forKey: "externalEditor") }
   }
 
+  var terminalUsesManagedTools: Bool {
+    didSet { preferences.set(terminalUsesManagedTools, forKey: "terminalUsesManagedTools") }
+  }
+
   // MARK: - Project & Hardware State
   private(set) var project: URL?
   private(set) var projectFolders: [ProjectFolder] = [] {
@@ -415,6 +419,7 @@ final class Workspace {
 
   init() {
     let defaults = UserDefaults.standard
+    terminalUsesManagedTools = defaults.bool(forKey: "terminalUsesManagedTools")
     projectSortOrder =
       defaults.string(forKey: "projectSortOrder").flatMap(ProjectSortOrder.init(rawValue:))
       ?? .added
@@ -1011,7 +1016,10 @@ final class Workspace {
   }
 
   private func openTerminalSession(restart: Bool = false) {
-    terminals.open(for: project, directory: terminalDirectory, restart: restart)
+    terminals.open(
+      for: project, directory: terminalDirectory, restart: restart,
+      managedTools: terminalUsesManagedTools ? cubeCLI : nil,
+      useManagedPath: terminalUsesManagedTools)
   }
 
   private func releaseTerminalFocus() {
