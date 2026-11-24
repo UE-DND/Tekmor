@@ -12,28 +12,17 @@ struct StatusBarView: View {
   var body: some View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 10) {
-        statusSummary(maxErrorWidth: workspace.canUseOutputCommands ? 420 : 680)
-        if workspace.canUseOutputCommands {
+        statusSummary(maxErrorWidth: hasTrailingContent ? 420 : 680)
+        if hasTrailingContent {
           Spacer(minLength: 8)
-          outputMetrics
-          followOutput
+          trailingContent
         }
       }
 
       VStack(alignment: .leading, spacing: 4) {
         statusSummary(maxErrorWidth: nil)
-        if workspace.canUseOutputCommands {
-          ViewThatFits(in: .horizontal) {
-            HStack {
-              outputMetrics
-              Spacer(minLength: 8)
-              followOutput
-            }
-            VStack(alignment: .leading, spacing: 4) {
-              outputMetrics
-              followOutput
-            }
-          }
+        if hasTrailingContent {
+          narrowTrailingContent
         }
       }
     }
@@ -377,6 +366,83 @@ struct StatusBarView: View {
         : (workspace.isShowingProjectArea
           ? workspace.status
           : l10n.tr(.init("help.showProjectArea", defaultValue: "Show Project View"))))
+  }
+
+  private var showsBackgroundSerialIndicator: Bool {
+    workspace.serialConnected
+      && !(workspace.canArrangeConsole && workspace.workbench.root.visiblePanes.contains(.serial))
+  }
+
+  private var hasTrailingContent: Bool {
+    workspace.canUseOutputCommands || showsBackgroundSerialIndicator
+  }
+
+  @ViewBuilder
+  private var trailingContent: some View {
+    HStack(spacing: 10) {
+      if showsBackgroundSerialIndicator {
+        backgroundSerialIndicator
+        if workspace.canUseOutputCommands {
+          VerticalHairline(height: 12)
+        }
+      }
+      if workspace.canUseOutputCommands {
+        outputMetrics
+        followOutput
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var narrowTrailingContent: some View {
+    if workspace.canUseOutputCommands {
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 8) {
+          if showsBackgroundSerialIndicator {
+            backgroundSerialIndicator
+            VerticalHairline(height: 12)
+          }
+          outputMetrics
+          Spacer(minLength: 8)
+          followOutput
+        }
+        VStack(alignment: .leading, spacing: 4) {
+          if showsBackgroundSerialIndicator {
+            backgroundSerialIndicator
+          }
+          outputMetrics
+          followOutput
+        }
+      }
+    } else if showsBackgroundSerialIndicator {
+      backgroundSerialIndicator
+    }
+  }
+
+  private var backgroundSerialIndicator: some View {
+    let portLabel = workspace.selectedSerial?.label ?? ""
+    let summary =
+      portLabel.isEmpty
+      ? "\(workspace.configuration.serial.baud)"
+      : "\(portLabel) · \(workspace.configuration.serial.baud)"
+    return Button(action: workspace.showSerialMonitor) {
+      HStack(spacing: 5) {
+        Circle()
+          .fill(TekmorColor.success)
+          .frame(width: 6, height: 6)
+        Text(summary)
+          .font(.system(size: 11.5 * textScale, weight: .medium, design: .monospaced))
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .frame(maxWidth: 220, alignment: .leading)
+      }
+    }
+    .buttonStyle(TekmorFlatActionButtonStyle(tint: TekmorColor.textSecondary, compact: true))
+    .help(
+      l10n.tr(
+        .init(
+          "statusBar.serialBackgroundHelp",
+          defaultValue: "Listening in background — click to open Serial Monitor")))
   }
 
   private var outputMetrics: some View {

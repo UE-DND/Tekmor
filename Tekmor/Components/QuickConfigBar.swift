@@ -287,6 +287,10 @@ struct SerialDeviceInlineMenu: View {
 
   var body: some View {
     Menu {
+      if workspace.devices.isEmpty {
+        Text(
+          l10n.tr(.init("quickbar.serial.empty", defaultValue: "No USB serial ports detected")))
+      }
       Picker(
         title,
         selection: Binding(
@@ -315,6 +319,13 @@ struct SerialDeviceInlineMenu: View {
         Label(
           l10n.tr(.init("quickbar.serial.refresh", defaultValue: "Refresh Serial Ports")),
           systemImage: "arrow.clockwise")
+      }
+      Button {
+        workspace.selectSidebarItem(.devices)
+      } label: {
+        Label(
+          l10n.tr(.init("help.openDevices", defaultValue: "Open Devices")),
+          systemImage: "cable.connector")
       }
     } label: {
       if inOverflow {

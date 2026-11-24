@@ -81,6 +81,22 @@
         }
       }
     },
+    "quickbar.serial.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No USB serial ports detected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未检测到 USB 串口设备"
+          }
+        }
+      }
+    },
     "settings.editor.systemDefault" : {
       "localizations" : {
         "en" : {
@@ -221,6 +237,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需选择工具链文件"
+          }
+        }
+      }
+    },
+    "statusBar.serialBackgroundHelp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening in background — click to open Serial Monitor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "串口正在后台监听 — 点击打开串口监视器"
           }
         }
       }
