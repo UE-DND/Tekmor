@@ -1,262 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "console.openSourceLocation" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开 %@"
-          }
-        }
-      }
-    },
-    "console.revealSourceFile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reveal Source File in Finder"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在访达中显示源文件"
-          }
-        }
-      }
-    },
-    "help.guidance.loadTargets" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configure CMake and scan executable targets for this project"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配置 CMake 并扫描此项目的可执行目标"
-          }
-        }
-      }
-    },
-    "help.guidance.selectToolchain" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Inspector to choose a CMake toolchain file"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开右侧检查器以选择 CMake 工具链文件"
-          }
-        }
-      }
-    },
-    "help.openSourceLocation" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open %@ in editor"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在编辑器中打开 %@"
-          }
-        }
-      }
-    },
-    "quickbar.serial.empty" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No USB serial ports detected"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未检测到 USB 串口设备"
-          }
-        }
-      }
-    },
-    "settings.editor.systemDefault" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "System Default"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "系统默认"
-          }
-        }
-      }
-    },
-    "settings.externalEditor" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "External Editor"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "外部编辑器"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.connectProbe" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect ST-LINK probe"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需连接 ST-LINK 调试器"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.installBuildTools" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Build tools required"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需安装构建工具"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.installProgrammer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Programmer tool required"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需安装烧录工具"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.loadTargets" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Load firmware targets"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加载构建目标"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.selectFlashPort" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select UART flash port"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需选择烧录串口"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.selectTarget" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select a target above"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请在上方选择目标"
-          }
-        }
-      }
-    },
-    "statusBar.guidance.selectToolchain" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select CMake toolchain file"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需选择工具链文件"
-          }
-        }
-      }
-    },
-    "statusBar.serialBackgroundHelp" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Listening in background — click to open Serial Monitor"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "串口正在后台监听 — 点击打开串口监视器"
-          }
-        }
-      }
-    },
     "·" : {
       "shouldTranslate" : false
     },
@@ -552,6 +296,22 @@
         }
       }
     },
+    "action.cleanProjectCache" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Project Build Cache"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清理项目构建缓存"
+          }
+        }
+      }
+    },
     "action.clearActiveConsole" : {
       "localizations" : {
         "en" : {
@@ -693,6 +453,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
+          }
+        }
+      }
+    },
+    "action.eraseFlash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Flash"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除 Flash"
+          }
+        }
+      }
+    },
+    "action.eraseFlashEllipsis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Flash…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除 Flash…"
           }
         }
       }
@@ -842,6 +634,22 @@
         }
       }
     },
+    "action.reconfigureCMake" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconfigure CMake"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新配置 CMake"
+          }
+        }
+      }
+    },
     "action.refresh" : {
       "localizations" : {
         "en" : {
@@ -919,6 +727,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢复默认"
+          }
+        }
+      }
+    },
+    "action.resetTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset Target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复位目标"
           }
         }
       }
@@ -1503,6 +1327,22 @@
         }
       }
     },
+    "console.openSourceLocation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 %@"
+          }
+        }
+      }
+    },
     "console.outputActions" : {
       "localizations" : {
         "en" : {
@@ -1515,6 +1355,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "输出操作"
+          }
+        }
+      }
+    },
+    "console.revealSourceFile" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reveal Source File in Finder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在访达中显示源文件"
           }
         }
       }
@@ -2090,6 +1946,22 @@
         }
       }
     },
+    "error.confirmedTargetChanged" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected target changed or disconnected."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选定的目标已改变或断开连接。"
+          }
+        }
+      }
+    },
     "error.noCMakeLists" : {
       "localizations" : {
         "en" : {
@@ -2364,6 +2236,38 @@
         }
       }
     },
+    "help.guidance.loadTargets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configure CMake and scan executable targets for this project"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配置 CMake 并扫描此项目的可执行目标"
+          }
+        }
+      }
+    },
+    "help.guidance.selectToolchain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Inspector to choose a CMake toolchain file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开右侧检查器以选择 CMake 工具链文件"
+          }
+        }
+      }
+    },
     "help.hideInspector" : {
       "localizations" : {
         "en" : {
@@ -2441,6 +2345,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开硬件设备"
+          }
+        }
+      }
+    },
+    "help.openSourceLocation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open %@ in editor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在编辑器中打开 %@"
           }
         }
       }
@@ -2672,6 +2592,9 @@
         }
       }
     },
+    "HEX" : {
+
+    },
     "inspector.expectedMCUPrompt" : {
       "localizations" : {
         "en" : {
@@ -2718,6 +2641,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "构建或选择固件后将在此显示固件信息。"
+          }
+        }
+      }
+    },
+    "inspector.flashLoad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash Load"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash 装载量"
           }
         }
       }
@@ -2789,6 +2728,22 @@
         }
       }
     },
+    "inspector.sectionSizes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ELF Sections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ELF 各节用量"
+          }
+        }
+      }
+    },
     "inspector.selectToolchainHelp" : {
       "localizations" : {
         "en" : {
@@ -2817,6 +2772,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择工程内的 .cmake 文件…"
+          }
+        }
+      }
+    },
+    "inspector.staticRAM" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM (.data + .bss)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM（.data + .bss）"
           }
         }
       }
@@ -3640,6 +3611,22 @@
         }
       }
     },
+    "quickbar.serial.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No USB serial ports detected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未检测到 USB 串口设备"
+          }
+        }
+      }
+    },
     "quickbar.serial.label" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3717,6 +3704,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择串口"
+          }
+        }
+      }
+    },
+    "quickbar.target.discovering" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discovering targets…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在探测项目目标…"
           }
         }
       }
@@ -3817,6 +3820,44 @@
         }
       }
     },
+    "RX" : {
+
+    },
+    "RX HEX" : {
+
+    },
+    "serial.command.hex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEX bytes, e.g. 01 02 FF"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEX 字节，如 01 02 FF"
+          }
+        }
+      }
+    },
+    "serial.command.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a serial command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入串口指令"
+          }
+        }
+      }
+    },
     "serial.connected" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3846,6 +3887,118 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未监听"
+          }
+        }
+      }
+    },
+    "serial.format.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本"
+          }
+        }
+      }
+    },
+    "serial.lineEnding" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Line Ending"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行尾符"
+          }
+        }
+      }
+    },
+    "serial.lineEnding.none" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
+    },
+    "serial.receiveFormat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receive Format"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接收格式"
+          }
+        }
+      }
+    },
+    "serial.send" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送"
+          }
+        }
+      }
+    },
+    "serial.sendFormat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Format"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送格式"
+          }
+        }
+      }
+    },
+    "settings.about.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STM32 toolbox powered by CubeCLI"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由 CubeCLI 驱动的 STM32 工具箱"
           }
         }
       }
@@ -3926,6 +4079,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "日志与串口默认跟随最新输出"
+          }
+        }
+      }
+    },
+    "settings.editor.systemDefault" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Default"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统默认"
+          }
+        }
+      }
+    },
+    "settings.externalEditor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "External Editor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外部编辑器"
           }
         }
       }
@@ -4042,22 +4227,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "系统菜单和文件面板遵循 macOS 系统设置中为此 App 配置的语言。"
-          }
-        }
-      }
-    },
-    "settings.about.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "STM32 toolbox powered by CubeCLI"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "由 CubeCLI 驱动的 STM32 工具箱"
           }
         }
       }
@@ -4207,6 +4376,38 @@
         }
       }
     },
+    "settings.terminalManagedPATH" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prefer Tekmor tools in new terminals"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新终端优先使用 Tekmor 工具链"
+          }
+        }
+      }
+    },
+    "settings.terminalManagedPATHHelp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New and restarted sessions skip shell startup files that can reorder the managed PATH."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建或重启的会话跳过可能重排托管 PATH 的 shell 启动脚本。"
+          }
+        }
+      }
+    },
     "settings.workbenchTextSize" : {
       "localizations" : {
         "en" : {
@@ -4252,6 +4453,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "BIN 烧录地址"
+          }
+        }
+      }
+    },
+    "sheet.erase.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This erases all firmware and stored data in the target's internal Flash."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作会擦除目标片内 Flash 中的全部固件和数据。"
+          }
+        }
+      }
+    },
+    "sheet.erase.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Internal Flash?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除片内 Flash？"
+          }
+        }
+      }
+    },
+    "sheet.hardware.target" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标连接"
           }
         }
       }
@@ -4676,6 +4925,22 @@
         }
       }
     },
+    "status.erasingFlash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erasing internal Flash"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在擦除片内 Flash"
+          }
+        }
+      }
+    },
     "status.failed" : {
       "localizations" : {
         "en" : {
@@ -4688,6 +4953,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "任务失败"
+          }
+        }
+      }
+    },
+    "status.flashErased" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Internal Flash erased"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "片内 Flash 已擦除"
           }
         }
       }
@@ -4785,6 +5066,22 @@
         }
       }
     },
+    "status.projectCacheCleared" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project build cache cleared"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目构建缓存已清理"
+          }
+        }
+      }
+    },
     "status.readingChip" : {
       "localizations" : {
         "en" : {
@@ -4817,6 +5114,22 @@
         }
       }
     },
+    "status.resettingTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetting target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在复位目标"
+          }
+        }
+      }
+    },
     "status.selectTarget" : {
       "localizations" : {
         "en" : {
@@ -4829,6 +5142,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请选择固件目标"
+          }
+        }
+      }
+    },
+    "status.startingApplication" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting the UART application"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在通过 UART 启动应用"
+          }
+        }
+      }
+    },
+    "status.targetReset" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target reset"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标已复位"
           }
         }
       }
@@ -4894,6 +5239,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "烧录已校验并复位"
+          }
+        }
+      }
+    },
+    "status.verifiedAndStarted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flashed, verified & started"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已烧录、校验并启动"
           }
         }
       }
@@ -5006,6 +5367,134 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "跟随输出"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.connectProbe" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect ST-LINK probe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需连接 ST-LINK 调试器"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.installBuildTools" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build tools required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需安装构建工具"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.installProgrammer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Programmer tool required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需安装烧录工具"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.loadTargets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load firmware targets"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载构建目标"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectFlashPort" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select UART flash port"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需选择烧录串口"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a target above"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在上方选择目标"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectToolchain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select CMake toolchain file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需选择工具链文件"
+          }
+        }
+      }
+    },
+    "statusBar.serialBackgroundHelp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening in background — click to open Serial Monitor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "串口正在后台监听 — 点击打开串口监视器"
           }
         }
       }
@@ -5705,495 +6194,6 @@
     },
     "简体中文" : {
       "shouldTranslate" : false
-    },
-    "HEX" : {
-
-    },
-    "RX" : {
-
-    },
-    "RX HEX" : {
-
-    },
-    "serial.command.hex" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HEX bytes, e.g. 01 02 FF"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HEX 字节，如 01 02 FF"
-          }
-        }
-      }
-    },
-    "serial.command.text" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter a serial command"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "输入串口指令"
-          }
-        }
-      }
-    },
-    "serial.format.text" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "文本"
-          }
-        }
-      }
-    },
-    "serial.lineEnding" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Line Ending"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "行尾符"
-          }
-        }
-      }
-    },
-    "serial.lineEnding.none" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "None"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无"
-          }
-        }
-      }
-    },
-    "serial.receiveFormat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Receive Format"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "接收格式"
-          }
-        }
-      }
-    },
-    "serial.send" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发送"
-          }
-        }
-      }
-    },
-    "serial.sendFormat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send Format"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发送格式"
-          }
-        }
-      }
-    },
-    "inspector.flashLoad" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flash Load"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flash 装载量"
-          }
-        }
-      }
-    },
-    "inspector.sectionSizes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ELF Sections"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ELF 各节用量"
-          }
-        }
-      }
-    },
-    "inspector.staticRAM" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RAM (.data + .bss)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RAM（.data + .bss）"
-          }
-        }
-      }
-    },
-    "action.cleanProjectCache" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Project Build Cache"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "清理项目构建缓存"
-          }
-        }
-      }
-    },
-    "action.reconfigureCMake" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reconfigure CMake"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新配置 CMake"
-          }
-        }
-      }
-    },
-    "quickbar.target.discovering" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discovering targets…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在探测项目目标…"
-          }
-        }
-      }
-    },
-    "status.projectCacheCleared" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Project build cache cleared"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "项目构建缓存已清理"
-          }
-        }
-      }
-    },
-    "action.eraseFlash" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erase Flash"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "擦除 Flash"
-          }
-        }
-      }
-    },
-    "action.eraseFlashEllipsis" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erase Flash…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "擦除 Flash…"
-          }
-        }
-      }
-    },
-    "action.resetTarget" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset Target"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复位目标"
-          }
-        }
-      }
-    },
-    "error.confirmedTargetChanged" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The selected target changed or disconnected."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选定的目标已改变或断开连接。"
-          }
-        }
-      }
-    },
-    "sheet.erase.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This erases all firmware and stored data in the target's internal Flash."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此操作会擦除目标片内 Flash 中的全部固件和数据。"
-          }
-        }
-      }
-    },
-    "sheet.erase.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erase Internal Flash?"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "擦除片内 Flash？"
-          }
-        }
-      }
-    },
-    "sheet.hardware.target" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Target"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "目标连接"
-          }
-        }
-      }
-    },
-    "status.erasingFlash" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erasing internal Flash"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在擦除片内 Flash"
-          }
-        }
-      }
-    },
-    "status.flashErased" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Internal Flash erased"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "片内 Flash 已擦除"
-          }
-        }
-      }
-    },
-    "status.resettingTarget" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resetting target"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在复位目标"
-          }
-        }
-      }
-    },
-    "status.startingApplication" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Starting the UART application"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在通过 UART 启动应用"
-          }
-        }
-      }
-    },
-    "status.targetReset" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Target reset"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "目标已复位"
-          }
-        }
-      }
-    },
-    "status.verifiedAndStarted" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flashed, verified & started"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已烧录、校验并启动"
-          }
-        }
-      }
-    },
-    "settings.terminalManagedPATH" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prefer Tekmor tools in new terminals"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新终端优先使用 Tekmor 工具链"
-          }
-        }
-      }
-    },
-    "settings.terminalManagedPATHHelp" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New and restarted sessions skip shell startup files that can reorder the managed PATH."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新建或重启的会话跳过可能重排托管 PATH 的 shell 启动脚本。"
-          }
-        }
-      }
     }
   },
   "version" : "1.0"
