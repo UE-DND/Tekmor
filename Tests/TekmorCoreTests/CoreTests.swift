@@ -89,7 +89,7 @@ import Testing
 }
 
 @Test func preservesUTF8AcrossSerialReads() {
-  let decoder = SerialDecoder()
+  var decoder = SerialDecoder()
   let text = "Rain é 雨 ☔ 🌧\n"
   let bytes = Array(text.utf8)
   let output = bytes.indices.map { decoder.append(bytes[$0...$0]) }.joined()

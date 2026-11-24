@@ -20,7 +20,9 @@ public struct SerialSettings: Equatable, Sendable {
     case none, even, odd
   }
 
-  public static let baudRates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400]
+  public static let baudRates = [
+    1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1_000_000,
+  ]
   public var baud = 115200
   public var parity = Parity.none
   public var stopBits = 1

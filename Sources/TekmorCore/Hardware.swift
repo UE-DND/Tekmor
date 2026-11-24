@@ -77,13 +77,16 @@ public enum DeviceDiscovery {
 }
 
 public final class SerialConnection: Sendable {
+  private let fd: Int32
+  private let queue = DispatchQueue(label: "app.tekmor.serial")
   private let source: DispatchSourceRead
+  private let sending = Mutex(false)
   private let shutdown = SerialShutdown()
   public let device: SerialDevice
 
-  public init(
+  public convenience init(
     device: SerialDevice, settings: SerialSettings,
-    receive: @escaping ToolLog, disconnected: @escaping ToolLog
+    receive: @escaping @Sendable (Data) -> Void, disconnected: @escaping ToolLog
   ) throws {
     try settings.validate()
     guard DeviceDiscovery.serial().contains(device) else {
@@ -102,19 +105,26 @@ public final class SerialConnection: Sendable {
       Darwin.close(fd)
       throw error
     }
+    self.init(device: device, descriptor: fd, receive: receive, disconnected: disconnected)
+  }
+
+  // Takes ownership of an open, nonblocking descriptor.
+  init(
+    device: SerialDevice, descriptor fd: Int32,
+    receive: @escaping @Sendable (Data) -> Void, disconnected: @escaping ToolLog
+  ) {
     self.device = device
-    let queue = DispatchQueue(label: "app.tekmor.serial")
+    self.fd = fd
     let readSource = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
     source = readSource
-    let decoder = SerialDecoder()
     readSource.setEventHandler { [weak self] in
       guard let self else { return }
       var buffer = [UInt8](repeating: 0, count: 4096)
-      repeat {
+      for _ in 0..<16 {
+        guard !self.source.isCancelled else { return }
         let count = Darwin.read(fd, &buffer, buffer.count)
         if count > 0 {
-          let text = decoder.append(buffer.prefix(count))
-          if !text.isEmpty { receive(text) }
+          receive(Data(buffer.prefix(count)))
         } else if count < 0 && errno == EINTR {
           continue
         } else if count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -129,13 +139,64 @@ public final class SerialConnection: Sendable {
           self.source.cancel()
           return
         }
-      } while !self.source.isCancelled
+      }
     }
     readSource.setCancelHandler { [shutdown] in
       Darwin.close(fd)
       shutdown.finish()
     }
     readSource.activate()
+  }
+
+  /// Queues bytes to the serial driver. A failure can occur after a partial write.
+  public func send(_ bytes: Data) async throws {
+    guard !bytes.isEmpty else { return }
+    guard
+      sending.withLock({ active in
+        guard !active else { return false }
+        active = true
+        return true
+      })
+    else {
+      throw Self.sendError(device)
+    }
+    defer { sending.withLock { $0 = false } }
+
+    let clock = ContinuousClock()
+    var deadline = clock.now + .seconds(5)
+    var written = 0
+    while written < bytes.count {
+      try Task.checkCancellation()
+      let offset = written
+      let count = try await withCheckedThrowingContinuation {
+        (continuation: CheckedContinuation<Int, any Error>) in
+        queue.async { [self] in
+          guard !source.isCancelled else {
+            continuation.resume(throwing: Self.sendError(device))
+            return
+          }
+          let result = bytes.withUnsafeBytes { buffer in
+            guard let address = buffer.baseAddress else { return 0 }
+            return Darwin.write(fd, address.advanced(by: offset), buffer.count - offset)
+          }
+          let code = errno
+          if result >= 0 {
+            continuation.resume(returning: result)
+          } else if code == EINTR || code == EAGAIN || code == EWOULDBLOCK {
+            continuation.resume(returning: 0)
+          } else {
+            continuation.resume(throwing: Self.sendError(device))
+          }
+        }
+      }
+      if count > 0 {
+        written += count
+        deadline = clock.now + .seconds(5)
+      } else {
+        guard clock.now < deadline else { throw Self.sendError(device) }
+        try await Task.sleep(for: .milliseconds(10))
+      }
+    }
   }
 
   public func close() async {
@@ -159,11 +220,27 @@ public final class SerialConnection: Sendable {
       if settings.parity == .odd { options.c_cflag |= tcflag_t(PARODD) }
     }
     if settings.stopBits == 2 { options.c_cflag |= tcflag_t(CSTOPB) }
-    guard cfsetspeed(&options, speed_t(settings.baud)) == 0, tcsetattr(fd, TCSANOW, &options) == 0,
-      tcflush(fd, TCIFLUSH) == 0
-    else {
-      throw serialError(errno, device: device)
+    let needsCustomSpeed = settings.baud > 230400
+    let standardSpeed = speed_t(needsCustomSpeed ? 115200 : settings.baud)
+    guard cfsetspeed(&options, standardSpeed) == 0,
+      tcsetattr(fd, TCSANOW, &options) == 0
+    else { throw serialError(errno, device: device) }
+    if needsCustomSpeed {
+      var speed = speed_t(settings.baud)
+      // IOSSIOSPEED is _IOW('T', 2, speed_t) in IOKit/serial/ioss.h.
+      let setSpeed = UInt(0x8000_5402) | (UInt(MemoryLayout<speed_t>.size) << 16)
+      guard ioctl(fd, setSpeed, &speed) == 0 else { throw serialError(errno, device: device) }
     }
+  }
+
+  private static func sendError(_ device: SerialDevice) -> TekmorError {
+    TekmorError(
+      TekmorLocalization.core(
+        .init(
+          "core.hardware.serialSendFailed",
+          defaultValue:
+            "Could not finish sending to \(device.label). Some bytes may have been sent.",
+          bundle: .atURL(Bundle.module.bundleURL))))
   }
 
   private static func serialError(_ code: Int32, device: SerialDevice) -> TekmorError {
@@ -218,10 +295,23 @@ private final class SerialShutdown: Sendable {
   }
 }
 
-final class SerialDecoder {
+/// Decodes a byte stream while retaining incomplete UTF-8 sequences between reads.
+public struct SerialDecoder {
+  public init() {}
+
+  public mutating func append(_ input: Data) -> String {
+    append(Array(input)[...])
+  }
+
+  /// Finishes the stream, replacing any incomplete UTF-8 sequence.
+  public mutating func finish() -> String {
+    defer { bytes.removeAll(keepingCapacity: true) }
+    return String(decoding: bytes, as: UTF8.self)
+  }
+
   private var bytes: [UInt8] = []
 
-  func append(_ input: ArraySlice<UInt8>) -> String {
+  mutating func append(_ input: ArraySlice<UInt8>) -> String {
     bytes.append(contentsOf: input)
     let end = bytes.endIndex
     var index = end

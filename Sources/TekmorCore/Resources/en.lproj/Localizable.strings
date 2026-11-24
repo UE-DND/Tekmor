@@ -102,3 +102,7 @@
 "core.cmake.missingToolchains" = "CMake did not return the selected compiler information.";
 "core.cube.invalidDirectory" = "The tool installation directory path cannot contain a colon.";
 "core.cube.makeUnavailable" = "System Make is unavailable. Unix Makefiles builds require Make.";
+
+"core.hardware.serialSendFailed" = "Could not finish sending to %@. Some bytes may have been sent.";
+"core.serial.invalidPayloadSize" = "Enter a command of 1 to 65536 bytes, including its line ending.";
+"core.serial.invalidHEX" = "Enter complete HEX byte pairs, for example 01 02 FF.";

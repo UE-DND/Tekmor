@@ -648,7 +648,11 @@ private struct ProjectOutputPane: View {
     let results = searchResults
     Group {
       if isSerial {
-        serialViewport(results: results)
+        VStack(spacing: 0) {
+          serialViewport(results: results)
+          HairlineDivider()
+          SerialComposer(workspace: workspace)
+        }
       } else {
         buildLogViewport(results: results)
       }
@@ -681,6 +685,9 @@ private struct ProjectOutputPane: View {
       }
     }
     .onChange(of: searchQuery.wrappedValue) { selectedMatch = nil }
+    .onChange(of: workspace.output.serialFormat) {
+      if isSerial { selectedMatch = nil }
+    }
     .onExitCommand { if isSearchVisible { closeSearch() } }
   }
 

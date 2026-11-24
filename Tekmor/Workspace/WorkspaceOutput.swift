@@ -6,11 +6,17 @@ import TekmorCore
 final class WorkspaceOutput {
   @ObservationIgnored var logInbox = ConsoleInbox()
   @ObservationIgnored var toolLogInbox = ConsoleInbox()
-  @ObservationIgnored var serialInbox = ConsoleInbox()
+  @ObservationIgnored var serialInbox = SerialInbox()
 
   private var buildBuffer = ConsoleBuffer(.build)
   private var toolBuffer = ConsoleBuffer(.build)
-  private var serialBuffer = ConsoleBuffer(.serial)
+  private var serialText = ConsoleBuffer(.serial)
+  private var serialHEX = ConsoleBuffer(.serial)
+  @ObservationIgnored private var decoder = SerialDecoder()
+  @ObservationIgnored private var hexFormatter = SerialHEXView()
+  var serialFormat = SerialFormat.text
+
+  private var serialBuffer: ConsoleBuffer { serialFormat == .hex ? serialHEX : serialText }
   var logSearchQuery = ""
   var logShowsSearch = false
   var logOnlyIssues = false
@@ -52,7 +58,10 @@ final class WorkspaceOutput {
 
   func clearSerial() {
     _ = serialInbox.drain()
-    serialBuffer.clear()
+    serialText.clear()
+    serialHEX.clear()
+    decoder = SerialDecoder()
+    hexFormatter = SerialHEXView()
     serialByteCount = 0
     serialLineCount = 0
   }
@@ -105,8 +114,27 @@ final class WorkspaceOutput {
     guard batch.byteCount > 0 else { return false }
     serialByteCount += batch.byteCount
     serialLineCount += batch.newlineCount
-    serialBuffer.append(
-      batch.text, timestamp: timestamp(), showTimestamp: showTimestamp, hasGap: batch.hasGap)
+    if batch.hasGap {
+      decoder = SerialDecoder()
+      hexFormatter = SerialHEXView()
+    }
+    let stamp = showTimestamp ? timestamp() : nil
+    serialText.append(
+      decoder.append(batch.data), timestamp: stamp, showTimestamp: showTimestamp,
+      hasGap: batch.hasGap)
+    serialHEX.append(
+      hexFormatter.append(batch.data), timestamp: stamp, showTimestamp: showTimestamp,
+      hasGap: batch.hasGap)
     return true
+  }
+
+  func finishSerialStream() {
+    serialText.append(decoder.finish())
+  }
+
+  func appendSerialNotice(_ message: String) {
+    serialText.append("\n" + message + "\n")
+    serialHEX.append("\n" + message + "\n")
+    hexFormatter = SerialHEXView()
   }
 }

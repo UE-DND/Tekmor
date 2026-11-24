@@ -322,7 +322,11 @@ final class Workspace {
       }
     }
   }
-
+  private var serialTransmitByProject: [URL?: SerialTransmit] = [:]
+  var serialCommand: SerialCommand {
+    get { serialTransmitByProject[project]?.command ?? SerialCommand() }
+    set { serialTransmitByProject[project, default: SerialTransmit()].edit(newValue) }
+  }
   let output = WorkspaceOutput()
   enum ConsoleSearchAction { case toggle, next, previous }
   private(set) var consoleSearchAction: ConsoleSearchAction = .toggle
@@ -335,6 +339,7 @@ final class Workspace {
   private var closingSerialDevices: [UUID: SerialDevice] = [:]
   private(set) var activeFlashConnection: ChipConnection?
   private(set) var serialConnected = false
+  private(set) var sendingSerial = false
   private(set) var running = false
   private(set) var writing = false
   private(set) var choosingFile = false
@@ -458,6 +463,10 @@ final class Workspace {
 
   var selectedSerial: SerialDevice? { devices.first { $0.id == serialPath } }
   var canStartAction: Bool { !running && !choosingFile }
+  var canSendSerial: Bool {
+    serialConnected && !sendingSerial
+      && (!serialCommand.input.isEmpty || serialCommand.lineEnding != .none)
+  }
   var selectedFlashSerial: SerialDevice? { devices.first { $0.id == flashSerialPath } }
   var canSelectMonitorPort: Bool { !choosingFile }
   var canToggleSerial: Bool {
@@ -1176,6 +1185,35 @@ final class Workspace {
     }
   }
 
+  func recallSerialCommand(previous: Bool) {
+    serialTransmitByProject[project, default: SerialTransmit()].recall(previous: previous)
+  }
+
+  func sendSerialCommand() {
+    guard canSendSerial, let serial else { return }
+    let command = serialCommand
+    let bytes: Data
+    do {
+      bytes = try command.payload()
+    } catch {
+      reportError(error.localizedDescription)
+      return
+    }
+    let key = project
+    let identity = serialID
+    sendingSerial = true
+    Task { [weak self] in
+      guard let self else { return }
+      defer { if self.serialID == identity { self.sendingSerial = false } }
+      do {
+        try await serial.send(bytes)
+        self.serialTransmitByProject[key, default: SerialTransmit()].record(command)
+      } catch {
+        if self.serialID == identity { self.reportError(error.localizedDescription) }
+      }
+    }
+  }
+
   // MARK: - Tools, Storage & Trust Settings
 
   func chooseToolDirectory() {
@@ -1541,11 +1579,11 @@ final class Workspace {
   private func connectSerial(_ device: SerialDevice) throws {
     let identity = UUID()
     serialID = identity
-    let inbox = ConsoleInbox()
+    let inbox = SerialInbox()
     output.serialInbox = inbox
     serial = try SerialConnection(device: device, settings: configuration.serial) {
-      [weak self] text in
-      guard inbox.append(text) else { return }
+      [weak self] bytes in
+      guard inbox.append(bytes) else { return }
       Task { @MainActor in
         try? await Task.sleep(for: .milliseconds(24))
         guard let self, self.output.serialInbox === inbox else { return }
@@ -1555,12 +1593,11 @@ final class Workspace {
       Task { @MainActor in
         guard let self, self.serialID == identity else { return }
         self.dropSerial()
-        _ = self.output.serialInbox.append(
+        self.output.appendSerialNotice(
           self.l10n.tr(
             .init(
               "log.serialDisconnectedHint",
-              defaultValue: "\(message) Reconnect it to resume listening.")) + "\n")
-        self.flushPendingSerial()
+              defaultValue: "\(message) Reconnect it to resume listening.")))
         self.refreshDevices()
       }
     }
@@ -1569,11 +1606,13 @@ final class Workspace {
 
   private func dropSerial() {
     flushPendingSerial()
-    output.serialInbox = ConsoleInbox()
+    output.finishSerialStream()
+    output.serialInbox = SerialInbox()
     let connection = serial
     serial = nil
     serialID = UUID()
     serialConnected = false
+    sendingSerial = false
     guard let connection else { return }
     let releaseID = UUID()
     closingSerialDevices[releaseID] = connection.device

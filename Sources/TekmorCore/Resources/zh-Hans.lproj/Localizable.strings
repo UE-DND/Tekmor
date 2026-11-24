@@ -102,3 +102,7 @@
 "core.cmake.missingToolchains" = "CMake 没有返回所选编译器的信息。";
 "core.cube.invalidDirectory" = "工具安装目录的路径不能包含冒号。";
 "core.cube.makeUnavailable" = "系统 Make 不可用，Unix Makefiles 构建需要 Make。";
+
+"core.hardware.serialSendFailed" = "无法完成向 %@ 的串口发送，部分字节可能已发出。";
+"core.serial.invalidPayloadSize" = "请输入包含行尾符在内的 1 至 65536 字节指令。";
+"core.serial.invalidHEX" = "请输入完整的 HEX 字节对，例如 01 02 FF。";
