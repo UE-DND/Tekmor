@@ -446,14 +446,7 @@ public struct CubeProgrammer: Sendable {
     }
     let observed = try await read(
       connection, confirmedSerial: confirmed.probeSerialNumber, reuseUART: true, log: log)
-    guard observed.sameTarget(as: confirmed) else {
-      throw TekmorError(
-        TekmorLocalization.core(
-          .init(
-            "core.cube.targetChanged",
-            defaultValue: "Target chip information changed. Re-read and confirm the target.",
-            bundle: .atURL(Bundle.module.bundleURL))))
-    }
+    try checkTarget(observed, confirmed: confirmed)
     let result: CommandResult
     do {
       result = try await execute(
@@ -483,9 +476,7 @@ public struct CubeProgrammer: Sendable {
   ) async throws {
     let result: CommandResult
     do {
-      result = try await execute(
-        connection, ["-rst"], confirmedSerial: confirmed?.probeSerialNumber,
-        timeout: resetDeadline, log: log)
+      result = try await resetCommand(connection, confirmed: confirmed, log: log)
     } catch let timeout as CommandTimeout {
       let diagnostic = ChipInformation.plainText(timeout.result?.diagnostic ?? "")
       throw FlashFailure.timedOut(
@@ -501,6 +492,89 @@ public struct CubeProgrammer: Sendable {
             bundle: .atURL(Bundle.module.bundleURL))),
         progress: .init(write: .verified, reset: .unconfirmed))
     }
+  }
+
+  /// Resets a selected SWD target and requires a positive reset report.
+  public func resetTarget(
+    _ connection: ChipConnection, confirmed: ChipInformation,
+    log: @escaping ToolLog = { _ in }
+  ) async throws {
+    guard case .swd = connection else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.requiresSWD", defaultValue: "Target reset requires ST-LINK / SWD.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let result = try await resetCommand(connection, confirmed: confirmed, log: log)
+    guard result.succeeded, Self.reportsReset(result.diagnostic) else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.targetResetUnconfirmed",
+            defaultValue: "Target reset was not confirmed. Check the log or reset manually.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+  }
+
+  /// Erases internal Flash on the selected, previously identified target.
+  public func erase(
+    _ connection: ChipConnection, confirmed: ChipInformation,
+    log: @escaping ToolLog = { _ in }
+  ) async throws {
+    let observed = try await read(
+      connection, confirmedSerial: confirmed.probeSerialNumber, reuseUART: true, log: log)
+    try checkTarget(observed, confirmed: confirmed)
+    let result = try await execute(
+      connection, ["-e", "all"], confirmedSerial: confirmed.probeSerialNumber, reuseUART: true,
+      programming: true, timeout: .seconds(90), log: log)
+    guard result.succeeded, !Self.reportsError(result.diagnostic),
+      result.diagnostic.localizedCaseInsensitiveContains("mass erase successfully achieved")
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.eraseUnconfirmed",
+            defaultValue: "Full Flash erase was not confirmed. See the log for details.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+  }
+
+  func startUARTApplication(
+    _ connection: ChipConnection, address: UInt64, log: @escaping ToolLog
+  ) async throws {
+    let result = try await execute(
+      connection, ["--start", String(format: "0x%08llX", address)], reuseUART: true,
+      timeout: resetDeadline, log: log)
+    guard result.succeeded, !Self.reportsError(result.diagnostic),
+      result.diagnostic.localizedCaseInsensitiveContains("start operation achieved successfully")
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.startUnconfirmed",
+            defaultValue: "UART application start was not confirmed. Reset the board manually.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+  }
+
+  private func checkTarget(_ observed: ChipInformation, confirmed: ChipInformation) throws {
+    guard observed.sameTarget(as: confirmed) else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.targetChanged",
+            defaultValue: "Target chip information changed. Re-read and confirm the target.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+  }
+
+  private func resetCommand(
+    _ connection: ChipConnection, confirmed: ChipInformation?, log: @escaping ToolLog
+  ) async throws -> CommandResult {
+    try await execute(
+      connection, ["-rst"], confirmedSerial: confirmed?.probeSerialNumber,
+      timeout: resetDeadline, log: log)
   }
 
   private func execute(

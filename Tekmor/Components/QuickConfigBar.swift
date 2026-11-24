@@ -46,9 +46,6 @@ struct QuickConfigBar<Trailing: View>: View {
         swdProbeStatus
       } else {
         SerialDeviceInlineMenu(workspace: workspace, forFlashing: true, maxValueWidth: 168)
-        if let issue = workspace.flashSerialOccupancyIssue {
-          InlineStatusIndicator(text: issue, color: TekmorColor.warning)
-        }
       }
     }
   }

@@ -112,6 +112,14 @@ struct WorkspaceCommands: Commands {
         workspace?.chooseFirmware()
       }
       .disabled(workspace?.canChooseFirmware != true)
+      Button(l10n.tr(.init("action.resetTarget", defaultValue: "Reset Target"))) {
+        workspace?.start(.resetTarget)
+      }
+      .disabled(workspace?.canResetTarget != true)
+      Button(l10n.tr(.init("action.eraseFlashEllipsis", defaultValue: "Erase Flash…"))) {
+        workspace?.requestEraseFlash()
+      }
+      .disabled(workspace?.canEraseFlash != true)
       Divider()
       Button(l10n.tr(.init("action.refreshDevices", defaultValue: "Refresh Devices"))) {
         workspace?.refreshDevices()

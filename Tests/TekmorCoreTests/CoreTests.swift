@@ -797,32 +797,32 @@ private func addMockProgrammer(in directory: URL, to listingData: Data) throws -
 }
 
 @MainActor
-@Test func workflowBuildsAndFlashesUARTWithoutWaitingForManualReset() async throws {
+@Test func workflowBuildsAndStartsVerifiedUARTApplication() async throws {
   let fixture = try WorkflowFixture()
   defer { fixture.remove() }
   let host = WorkflowHost(
     connection: .uart(SerialDevice(id: "/dev/fake", label: "UART", registryID: 1)))
-  let logs = ConsoleInbox()
   let result = try await fixture.workflow.execute(
-    .run, context: fixture.context(method: .uart), interaction: host
-  ) { _ = logs.append($0) }
+    .run, context: fixture.context(method: .uart), interaction: host)
   #expect(result == .flashed)
   #expect(
     host.steps == [
       "tools", "select", "build", "artifact", "read", "write", "write ended", "verified",
+      "start", "started",
     ])
+  #expect(host.preparedConnections == [host.connection])
   #expect(host.progress == .init(write: .verified))
   #expect(!host.writing)
-  #expect(!(try fixture.commands()).contains(" -rst"))
-  let logged = logs.drain().text
-  #expect(!logged.localizedCaseInsensitiveContains("reset"))
-  #expect(!logged.contains("复位"))
+  let commands = try fixture.commands()
+  #expect(!commands.contains(" -rst"))
+  #expect(commands.contains("noinit=1 --start 0x08000000"))
 }
 
 @MainActor
-@Test func workflowFlashesStandaloneUARTWithoutWaitingForManualReset() async throws {
+@Test func workflowKeepsVerifiedWriteWhenUARTStartIsUnconfirmed() async throws {
   let fixture = try WorkflowFixture()
   defer { fixture.remove() }
+  try Data().write(to: fixture.project.appendingPathComponent("fail-start"))
   let host = WorkflowHost(
     connection: .uart(SerialDevice(id: "/dev/fake", label: "UART", registryID: 1)))
   let result = try await fixture.workflow.execute(
@@ -831,11 +831,53 @@ private func addMockProgrammer(in directory: URL, to listingData: Data) throws -
   #expect(result == .flashed)
   #expect(
     host.steps == [
-      "tools", "select", "read", "write", "write ended", "verified",
+      "tools", "select", "read", "write", "write ended", "verified", "start",
     ])
   #expect(host.progress == .init(write: .verified))
   #expect(!host.writing)
   #expect(!(try fixture.commands()).contains(" -rst"))
+}
+
+@MainActor
+@Test func workflowResetsAndErasesWithoutBuildingOrFlashingAnImage() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  let reset = try await fixture.workflow.execute(
+    .resetTarget, context: fixture.context(), interaction: host)
+  #expect(reset == .targetReset)
+  #expect(host.steps == ["tools", "select", "read", "target reset"])
+  host.steps = []
+  let erase = try await fixture.workflow.execute(
+    .eraseFlash, context: fixture.context(), interaction: host)
+  #expect(erase == .flashErased)
+  #expect(host.steps == ["tools", "select", "read", "erase", "write ended"])
+  #expect(!host.writing)
+  #expect(host.preparedConnections == [host.connection, host.connection])
+  let commands = try fixture.commands()
+  #expect(commands.contains("mode=NORMAL sn=SERIAL -e all"))
+  #expect(commands.contains(" -rst"))
+  #expect(!commands.contains("cmake --build"))
+  #expect(!commands.contains(" -w "))
+}
+
+@MainActor
+@Test func workflowDoesNotEraseWhenTargetChangesAfterRead() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  host.afterChipRead = {
+    do {
+      try Data().write(to: fixture.project.appendingPathComponent("changed-target"))
+    } catch {
+      Issue.record(error)
+    }
+  }
+  await #expect(throws: TekmorError.self) {
+    try await fixture.workflow.execute(.eraseFlash, context: fixture.context(), interaction: host)
+  }
+  #expect(!host.writing)
+  #expect(!(try fixture.commands()).contains(" -e all"))
 }
 
 @MainActor
@@ -916,6 +958,7 @@ private final class WorkflowHost: STM32Workflow.Interaction {
   var progress: FlashProgress?
   var writing = false
   var afterChipRead: (() -> Void)?
+  var preparedConnections: [ChipConnection] = []
 
   init(connection: ChipConnection) { self.connection = connection }
 
@@ -934,6 +977,10 @@ private final class WorkflowHost: STM32Workflow.Interaction {
     if !toolsAvailable { throw TekmorError("Prepare tools first") }
   }
 
+  func prepareProgrammerConnection(_ connection: ChipConnection) async throws {
+    preparedConnections.append(connection)
+  }
+
   func receive(_ event: STM32Workflow.Event) {
     switch event {
     case .targets(let names, let selected):
@@ -949,6 +996,12 @@ private final class WorkflowHost: STM32Workflow.Interaction {
       writing = true
       steps.append("write")
     case .stage(.resetting): steps.append("reset")
+    case .stage(.resettingTarget): steps.append("target reset")
+    case .stage(.startingApplication): steps.append("start")
+    case .applicationStarted: steps.append("started")
+    case .stage(.erasing):
+      writing = true
+      steps.append("erase")
     case .chipRead: afterChipRead?()
     case .writeEnded:
       writing = false
@@ -1021,6 +1074,10 @@ private struct WorkflowFixture {
                 printf 'Download verified successfully\n'
                 [ ! -f "$root/hang-write" ] || exec /bin/sleep 30 ;;
             'programmer '*'-rst') printf 'Reset is performed\n' ;;
+            'programmer '*'-e all') printf 'Mass erase successfully achieved\n' ;;
+            'programmer '*--start*)
+                [ ! -f "$root/fail-start" ] || exit 8
+                printf 'Start operation achieved successfully\n' ;;
             'programmer '*)
                 if [ -f "$root/changed-target" ]; then id=0x415; else id=0x413; fi
                 printf 'Device ID: %s\nDevice name: STM32F407xx\nFlash size: 1 MBytes\n' "$id" ;;

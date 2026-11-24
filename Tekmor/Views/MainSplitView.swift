@@ -19,13 +19,8 @@ struct MainSplitView: View {
           contextualToolbarItems
         }
       }
-      .sheet(
-        isPresented: Binding(
-          get: { workspace.binaryFirmware != nil },
-          set: { if !$0 { workspace.binaryFirmware = nil } }
-        )
-      ) {
-        BinaryFlashSheet(workspace: workspace)
+      .sheet(item: $workspace.hardwareConfirmation) { confirmation in
+        HardwareConfirmationSheet(workspace: workspace, confirmation: confirmation)
       }
       .sheet(isPresented: $workspace.showingToolLog) {
         ToolLogSheet(workspace: workspace)
@@ -147,6 +142,7 @@ struct MainSplitView: View {
             action: workspace.chooseFirmware
           )
           .disabled(!workspace.canChooseFirmware)
+          TargetOperationButtons(workspace: workspace)
           Divider()
           Button(l10n.tr(.init("action.reconfigureCMake", defaultValue: "Reconfigure CMake"))) {
             workspace.start(.reconfigure)
@@ -193,6 +189,7 @@ struct MainSplitView: View {
               action: workspace.chooseFirmware
             )
             .disabled(!workspace.canChooseFirmware)
+            TargetOperationButtons(workspace: workspace)
           } label: {
             Label(
               l10n.tr(.init("action.more", defaultValue: "More")), systemImage: "ellipsis.circle")
@@ -219,6 +216,11 @@ struct MainSplitView: View {
           l10n.tr(.init("action.refresh", defaultValue: "Refresh")), systemImage: "arrow.clockwise")
       }
       .help(l10n.tr(.init("help.scanDevices", defaultValue: "Scan for hardware devices now")))
+      Menu {
+        TargetOperationButtons(workspace: workspace)
+      } label: {
+        Label(l10n.tr(.init("action.more", defaultValue: "More")), systemImage: "ellipsis.circle")
+      }
 
     case .tools:
       if workspace.running {

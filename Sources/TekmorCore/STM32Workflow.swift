@@ -5,6 +5,7 @@ import Foundation
 public struct STM32Workflow {
   public enum Action: Sendable {
     case inspect, reconfigure, build, run
+    case resetTarget, eraseFlash
     case flash(URL, address: UInt64?, standalone: Bool)
   }
 
@@ -26,7 +27,7 @@ public struct STM32Workflow {
     case listingPresets, configuring
     case building(String)
     case checkingFirmware, readingChip
-    case writing, resetting
+    case writing, resetting, startingApplication, resettingTarget, erasing
   }
 
   public enum Event: Sendable {
@@ -39,7 +40,7 @@ public struct STM32Workflow {
     case selectedImage(URL, address: UInt64?, standalone: Bool)
     case chipRead(ChipConnection, ChipInformation)
     case firmwareUsage(FirmwareUsage)
-    case writeEnded
+    case writeEnded, applicationStarted
     case flashProgress(FlashProgress)
   }
 
@@ -47,7 +48,7 @@ public struct STM32Workflow {
     case inspected(Int)
     case awaitingTarget
     case built(URL)
-    case flashed
+    case flashed, targetReset, flashErased
   }
 
   @MainActor
@@ -56,6 +57,7 @@ public struct STM32Workflow {
       connection: ChipConnection, probeCount: Int
     )
     func checkTools(build: Bool, programmer: Bool) async throws
+    func prepareProgrammerConnection(_ connection: ChipConnection) async throws
     func receive(_ event: Event)
   }
 
@@ -90,6 +92,10 @@ public struct STM32Workflow {
         interaction.receive(.selectedImage(file, address: address, standalone: standalone))
         try await flash(file, address: address, target: target, interaction: interaction, log: log)
         return .flashed
+      case .resetTarget, .eraseFlash:
+        let erase = if case .eraseFlash = action { true } else { false }
+        return try await operateOnTarget(
+          erase: erase, context: context, interaction: interaction, log: log)
       case .inspect, .reconfigure, .build, .run:
         return try await configureAndBuild(
           action, context: context, interaction: interaction, log: log)
@@ -196,6 +202,7 @@ public struct STM32Workflow {
       try FirmwareImage(file: file, binaryAddress: address)
     }.value
     try Task.checkCancellation()
+    try await interaction.prepareProgrammerConnection(target.connection)
     try await flashWithCube(
       image, file: file, target: target, cube: cubeProgrammer(target.cube),
       interaction: interaction, log: log)
@@ -209,16 +216,7 @@ public struct STM32Workflow {
     let info = try await cube.read(target.connection, log: log)
     interaction.receive(.chipRead(target.connection, info))
     try image.validateInternalFlash(capacity: info.flashBytes)
-    let match = info.match(expected: target.expectedMCU)
-    if match == .mismatch, let expected = target.expectedMCU {
-      throw TekmorError(
-        TekmorLocalization.core(
-          .init(
-            "core.workflow.targetMismatch",
-            defaultValue:
-              "Connected target \(info.title) does not match expected project MCU \(expected).",
-            bundle: .atURL(Bundle.module.bundleURL))))
-    }
+    try checkMCU(info, expected: target.expectedMCU)
     try await write(interaction: interaction) {
       try await cube.write(image, to: target.connection, confirmed: info, log: log)
     }
@@ -231,6 +229,60 @@ public struct STM32Workflow {
       interaction.receive(.stage(.resetting))
       try await cube.reset(target.connection, confirmed: info, log: log)
       interaction.receive(.flashProgress(.init(write: .verified, reset: .confirmed)))
+    } else if let address = image.applicationStartAddress {
+      interaction.receive(.stage(.startingApplication))
+      do {
+        try await cube.startUARTApplication(target.connection, address: address, log: log)
+        interaction.receive(.applicationStarted)
+      } catch is CancellationError {
+        throw CancellationError()
+      } catch {
+        log(error.localizedDescription + "\n")
+      }
+    }
+  }
+
+  private func operateOnTarget(
+    erase: Bool, context: Context, interaction: any Interaction, log: @escaping ToolLog
+  ) async throws -> Outcome {
+    try await interaction.checkTools(build: false, programmer: true)
+    try context.configuration.validate()
+    let target = try flashTarget(standalone: false, context: context, interaction: interaction)
+    if !erase, case .uart = target.connection {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cube.requiresSWD", defaultValue: "Target reset requires ST-LINK / SWD.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    let cube = cubeProgrammer(target.cube)
+    try await interaction.prepareProgrammerConnection(target.connection)
+    interaction.receive(.stage(.readingChip))
+    let info = try await cube.read(target.connection, log: log)
+    interaction.receive(.chipRead(target.connection, info))
+    try checkMCU(info, expected: target.expectedMCU)
+    if erase {
+      try Task.checkCancellation()
+      interaction.receive(.stage(.erasing))
+      defer { interaction.receive(.writeEnded) }
+      try await cube.erase(target.connection, confirmed: info, log: log)
+      return .flashErased
+    }
+    interaction.receive(.stage(.resettingTarget))
+    try await cube.resetTarget(target.connection, confirmed: info, log: log)
+    return .targetReset
+  }
+
+  private func checkMCU(_ info: ChipInformation, expected: String?) throws {
+    let match = info.match(expected: expected)
+    if match == .mismatch, let expected {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.workflow.targetMismatch",
+            defaultValue:
+              "Connected target \(info.title) does not match expected project MCU \(expected).",
+            bundle: .atURL(Bundle.module.bundleURL))))
     }
   }
 
@@ -243,4 +295,8 @@ public struct STM32Workflow {
     defer { interaction.receive(.writeEnded) }
     try await action()
   }
+}
+
+extension STM32Workflow.Interaction {
+  public func prepareProgrammerConnection(_ connection: ChipConnection) async throws {}
 }

@@ -617,6 +617,7 @@
       }
     },
     "action.continue" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2078,13 +2079,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flashing or verifying firmware. You can quit Tekmor after the task completes."
+            "value" : "Writing, verifying, or erasing Flash. You can quit Tekmor after the task completes."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在写入或校验固件。任务结束后即可退出 Tekmor。"
+            "value" : "正在写入、校验或擦除 Flash。任务结束后即可退出 Tekmor。"
           }
         }
       }
@@ -2106,6 +2107,7 @@
       }
     },
     "error.selectFlashSTLink" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2138,6 +2140,7 @@
       }
     },
     "error.selectUARTSerial" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4237,6 +4240,7 @@
       }
     },
     "sheet.binary.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5947,6 +5951,214 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "项目构建缓存已清理"
+          }
+        }
+      }
+    },
+    "action.eraseFlash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Flash"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除 Flash"
+          }
+        }
+      }
+    },
+    "action.eraseFlashEllipsis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Flash…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除 Flash…"
+          }
+        }
+      }
+    },
+    "action.resetTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset Target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复位目标"
+          }
+        }
+      }
+    },
+    "error.confirmedTargetChanged" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected target changed or disconnected."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选定的目标已改变或断开连接。"
+          }
+        }
+      }
+    },
+    "sheet.erase.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This erases all firmware and stored data in the target's internal Flash."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作会擦除目标片内 Flash 中的全部固件和数据。"
+          }
+        }
+      }
+    },
+    "sheet.erase.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase Internal Flash?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "擦除片内 Flash？"
+          }
+        }
+      }
+    },
+    "sheet.hardware.target" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标连接"
+          }
+        }
+      }
+    },
+    "status.erasingFlash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erasing internal Flash"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在擦除片内 Flash"
+          }
+        }
+      }
+    },
+    "status.flashErased" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Internal Flash erased"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "片内 Flash 已擦除"
+          }
+        }
+      }
+    },
+    "status.resettingTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetting target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在复位目标"
+          }
+        }
+      }
+    },
+    "status.startingApplication" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting the UART application"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在通过 UART 启动应用"
+          }
+        }
+      }
+    },
+    "status.targetReset" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target reset"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标已复位"
+          }
+        }
+      }
+    },
+    "status.verifiedAndStarted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flashed, verified & started"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已烧录、校验并启动"
           }
         }
       }

@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 final class Workspace {
   enum Action {
     case inspect, reconfigure, cleanProjectCache, build, run
+    case resetTarget, eraseFlash
     case flash(URL, address: UInt64?, standalone: Bool)
     case installCube
     case installBundle(String)
@@ -16,8 +17,25 @@ final class Workspace {
     var isToolAction: Bool {
       switch self {
       case .installCube, .installBundle, .prepareAllTools: true
-      case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash: false
+      case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash, .resetTarget,
+        .eraseFlash:
+        false
       }
+    }
+  }
+
+  struct HardwareConfirmation: Identifiable {
+    enum Action {
+      case flash(URL)
+      case erase
+    }
+    let id = UUID()
+    let action: Action
+    let connection: ChipConnection?
+
+    var binary: Bool {
+      if case .flash(let file) = action { return file.pathExtension.lowercased() == "bin" }
+      return false
     }
   }
 
@@ -138,7 +156,8 @@ final class Workspace {
     case flashingSWD
     case verifiedNeedsReset
     case verifiedAndReset
-    case projectCacheCleared
+    case startingApplication, verifiedAndStarted
+    case resettingTarget, targetReset, erasingFlash, flashErased, projectCacheCleared
     case custom(String)
 
     func text(using l10n: AppL10n) -> String {
@@ -184,6 +203,18 @@ final class Workspace {
         )
       case .verifiedAndReset:
         l10n.tr(.init("status.verifiedAndReset", defaultValue: "Flashed, verified & reset"))
+      case .startingApplication:
+        l10n.tr(.init("status.startingApplication", defaultValue: "Starting the UART application"))
+      case .verifiedAndStarted:
+        l10n.tr(.init("status.verifiedAndStarted", defaultValue: "Flashed, verified & started"))
+      case .resettingTarget:
+        l10n.tr(.init("status.resettingTarget", defaultValue: "Resetting target"))
+      case .targetReset:
+        l10n.tr(.init("status.targetReset", defaultValue: "Target reset"))
+      case .erasingFlash:
+        l10n.tr(.init("status.erasingFlash", defaultValue: "Erasing internal Flash"))
+      case .flashErased:
+        l10n.tr(.init("status.flashErased", defaultValue: "Internal Flash erased"))
       case .projectCacheCleared:
         l10n.tr(.init("status.projectCacheCleared", defaultValue: "Project build cache cleared"))
       case .custom(let message): message
@@ -308,7 +339,7 @@ final class Workspace {
   private(set) var cubeMessageState: CubeStatusMessage?
   private(set) var loadingCube = false
   private(set) var hasCheckedCube = false
-  var binaryFirmware: URL?
+  var hardwareConfirmation: HardwareConfirmation?
   private(set) var serialPath: String? {
     didSet { saveSerialSelection(serialPath, key: "monitorSerialPath") }
   }
@@ -366,6 +397,11 @@ final class Workspace {
   @ObservationIgnored private var restoringProjectPreferences = false
   @ObservationIgnored private var targetDiscovery: Task<Void, Never>?
   @ObservationIgnored private var targetDiscoveryID = UUID()
+  @ObservationIgnored private var confirmedHardwareConnection: ChipConnection?
+  @ObservationIgnored private var serialReleaseTasks: [UUID: Task<Void, Never>] = [:]
+  @ObservationIgnored private var pausedUARTMonitor:
+    (device: SerialDevice, settings: SerialSettings)?
+  @ObservationIgnored private var uartApplicationStarted = false
   @ObservationIgnored private var artifactReadID = UUID()
   @ObservationIgnored private var standaloneImage: (file: URL, address: UInt64?)?
   @ObservationIgnored private var chipTask: Task<Void, Never>?
@@ -456,13 +492,13 @@ final class Workspace {
   }
 
   var selectedSerial: SerialDevice? { devices.first { $0.id == serialPath } }
-  var canStartAction: Bool { !running && !choosingFile }
+  var canStartAction: Bool { !running && !choosingFile && hardwareConfirmation == nil }
   var canSendSerial: Bool {
     serialConnected && !sendingSerial
       && (!serialCommand.input.isEmpty || serialCommand.lineEnding != .none)
   }
   var selectedFlashSerial: SerialDevice? { devices.first { $0.id == flashSerialPath } }
-  var canSelectMonitorPort: Bool { !choosingFile }
+  var canSelectMonitorPort: Bool { !choosingFile && hardwareConfirmation == nil }
   var canToggleSerial: Bool {
     guard canSelectMonitorPort else { return false }
     if serialConnected { return true }
@@ -483,7 +519,13 @@ final class Workspace {
     return canConfigureProject && targets.contains(target)
   }
   var canRunProject: Bool {
-    canBuildProject && programmerIssue == nil && flashSelectionIssue == nil
+    canBuildProject && canUseProgrammer
+  }
+  var canResetTarget: Bool { canUseProgrammer && configuration.flash == .swd }
+  var canEraseFlash: Bool { canUseProgrammer }
+
+  private var canUseProgrammer: Bool {
+    canStartAction && programmerIssue == nil && !loadingCube && flashSelectionIssue == nil
   }
 
   var serialSelectionIssue: String? {
@@ -538,18 +580,7 @@ final class Workspace {
           defaultValue: "Selected serial port disconnected; choose another"))
   }
 
-  var flashSerialOccupancyIssue: String? {
-    guard let device = selectedFlashSerial,
-      serial?.device.isSamePort(as: device) == true
-        || closingSerialDevices.values.contains(where: { $0.isSamePort(as: device) })
-    else { return nil }
-    return l10n.tr(
-      .init("issue.stopListeningBeforeFlash", defaultValue: "Stop listening before flashing"))
-  }
-
-  var flashHardwareIssue: String? {
-    flashSelectionIssue ?? (configuration.flash == .uart ? flashSerialOccupancyIssue : nil)
-  }
+  var flashHardwareIssue: String? { flashSelectionIssue }
   var cubeDisplayVersion: String? { cubeVersion.map(CubeCLI.displayVersion(from:)) }
   var cubeExecutablePath: String { CubeInstallation(directory: toolDirectory).executable.path }
 
@@ -819,17 +850,54 @@ final class Workspace {
       .init("panel.chooseFirmware", defaultValue: "Select an ELF, Intel HEX, or BIN firmware file"))
     chooseFile(using: panel) { url in
       if url.pathExtension.lowercased() == "bin" {
-        self.binaryFirmware = url
+        self.hardwareConfirmation = HardwareConfirmation(
+          action: .flash(url), connection: self.currentTarget)
       } else {
         self.start(.flash(url, address: nil, standalone: true))
       }
     }
   }
 
-  func flashBinary(at address: UInt64) {
-    guard let file = binaryFirmware else { return }
-    binaryFirmware = nil
-    start(.flash(file, address: address, standalone: true))
+  func requestEraseFlash() {
+    guard canEraseFlash, let connection = currentTarget else { return }
+    hardwareConfirmation = HardwareConfirmation(action: .erase, connection: connection)
+  }
+
+  func confirmHardwareAction(address: UInt64?) {
+    guard let confirmation = hardwareConfirmation else { return }
+    hardwareConfirmation = nil
+    refreshDevices()
+    guard let target = confirmation.connection, currentTarget == target else {
+      reportError(
+        l10n.tr(
+          .init(
+            "error.confirmedTargetChanged",
+            defaultValue: "The selected target changed or disconnected.")))
+      return
+    }
+    switch confirmation.action {
+    case .flash(let file):
+      guard !confirmation.binary || address != nil else { return }
+      start(.flash(file, address: address, standalone: true), confirmedConnection: target)
+    case .erase:
+      start(.eraseFlash, confirmedConnection: target)
+    }
+  }
+
+  func targetLabel(_ connection: ChipConnection) -> String {
+    switch connection {
+    case .uart(let port): port.label
+    case .swd(let probe):
+      [probe.label, probe.serialNumber].compactMap { $0 }.joined(separator: " · ")
+    }
+  }
+
+  private var currentTarget: ChipConnection? {
+    guard flashSelectionIssue == nil else { return nil }
+    switch configuration.flash {
+    case .uart: return selectedFlashSerial.map(ChipConnection.uart)
+    case .swd: return flashProbe.map(ChipConnection.swd)
+    }
   }
 
   func flashLastArtifact() {
@@ -961,7 +1029,7 @@ final class Workspace {
 
   // MARK: - Build, Flash & Install Tasks
 
-  func start(_ action: Action) {
+  func start(_ action: Action, confirmedConnection: ChipConnection? = nil) {
     guard canStartAction else { return }
     let isTool = action.isToolAction
     switch action {
@@ -969,23 +1037,28 @@ final class Workspace {
       guard !loadingCube else { return }
     case .build:
       guard canBuildProject else { return }
-    case .run, .flash:
-      if case .run = action, !canRunProject { return }
-      if configuration.flash == .uart, let issue = flashSerialOccupancyIssue {
-        reportError(issue)
-        return
-      }
+    case .run:
+      guard canRunProject else { return }
     case .inspect, .reconfigure:
       guard canConfigureProject else { return }
     case .cleanProjectCache:
       guard project != nil else { return }
+    case .resetTarget:
+      guard canResetTarget else { return }
+    case .eraseFlash:
+      guard canEraseFlash, confirmedConnection != nil else { return }
+    case .flash:
+      guard canChooseFirmware else { return }
     }
     let shouldResumeDiscovery: Bool
     switch action {
-    case .flash: shouldResumeDiscovery = discoveringTargets
+    case .flash, .resetTarget, .eraseFlash: shouldResumeDiscovery = discoveringTargets
     default: shouldResumeDiscovery = isTool
     }
     let discovery = cancelTargetDiscovery()
+    confirmedHardwareConnection = confirmedConnection
+    uartApplicationStarted = false
+    pausedUARTMonitor = nil
     let reading = chipTask
     reading?.cancel()
     if isTool {
@@ -1012,7 +1085,8 @@ final class Workspace {
       let all = Set(CubeCLI.defaultBuildNames + [CubeCLI.programmerBundleName])
       toolActivity = .preparingAll(
         includesCube: cubeVersion == nil, bundles: missing.isEmpty ? all : missing)
-    case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash:
+    case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash, .resetTarget,
+      .eraseFlash:
       showProjectArea()
       revealConsoleOutput(.buildLog)
     }
@@ -1031,6 +1105,8 @@ final class Workspace {
         writing = false
         toolActivity = nil
         activeFlashConnection = nil
+        confirmedHardwareConnection = nil
+        pausedUARTMonitor = nil
         lastBuildDuration = startedAt.duration(to: .now)
         operation = nil
         scheduleChipRead()
@@ -1076,7 +1152,7 @@ final class Workspace {
         .init(
           "error.cannotQuitWhileWriting",
           defaultValue:
-            "Flashing or verifying firmware. You can quit Tekmor after the task completes.")))
+            "Writing, verifying, or erasing Flash. You can quit Tekmor after the task completes.")))
     return false
   }
 
@@ -1190,6 +1266,7 @@ final class Workspace {
   func setSerialPath(_ path: String?) {
     guard canSelectMonitorPort else { return }
     if serialPath != path {
+      pausedUARTMonitor = nil
       dropSerial()
       serialPath = path
     }
@@ -1628,6 +1705,10 @@ final class Workspace {
         cleanup.cancel()
       }
       statusState = .projectCacheCleared
+    case .resetTarget:
+      try await performWorkflow(.resetTarget, token: token)
+    case .eraseFlash:
+      try await performWorkflow(.eraseFlash, token: token)
     case .build:
       try await performWorkflow(.build, token: token)
     case .run:
@@ -1652,10 +1733,27 @@ final class Workspace {
       statusState = .buildComplete(artifact.lastPathComponent)
     case .flashed:
       if case .uart = activeFlashConnection {
-        statusState = .verifiedNeedsReset
+        statusState = uartApplicationStarted ? .verifiedAndStarted : .verifiedNeedsReset
+        if uartApplicationStarted { resumeUARTMonitor() }
       } else {
         statusState = .verifiedAndReset
       }
+    case .targetReset:
+      statusState = .targetReset
+    case .flashErased:
+      statusState = .flashErased
+    }
+  }
+
+  private func resumeUARTMonitor() {
+    refreshDevices()
+    guard let paused = pausedUARTMonitor, let selected = selectedSerial,
+      selected == paused.device, serial == nil, configuration.serial == paused.settings
+    else { return }
+    do {
+      try connectSerial(selected)
+    } catch {
+      reportError(error.localizedDescription, logDestination: .build)
     }
   }
 
@@ -1687,7 +1785,8 @@ final class Workspace {
     serialConnected = true
   }
 
-  private func dropSerial() {
+  @discardableResult
+  private func dropSerial() -> Task<Void, Never>? {
     flushPendingSerial()
     output.finishSerialStream()
     output.serialInbox = SerialInbox()
@@ -1696,23 +1795,16 @@ final class Workspace {
     serialID = UUID()
     serialConnected = false
     sendingSerial = false
-    guard let connection else { return }
+    guard let connection else { return nil }
     let releaseID = UUID()
     closingSerialDevices[releaseID] = connection.device
-    Task { [weak self] in
+    let task = Task { [weak self] in
       await connection.close()
       self?.closingSerialDevices.removeValue(forKey: releaseID)
+      self?.serialReleaseTasks.removeValue(forKey: releaseID)
     }
-  }
-
-  private func requireSerial() throws -> SerialDevice {
-    guard let device = selectedFlashSerial else {
-      throw TekmorError(
-        l10n.tr(
-          .init("error.selectUARTSerial", defaultValue: "Select a serial port for UART flashing.")))
-    }
-    if let issue = flashSerialOccupancyIssue { throw TekmorError(issue) }
-    return device
+    serialReleaseTasks[releaseID] = task
+    return task
   }
 
   private func requireCube() throws -> CubeCLI {
@@ -1934,19 +2026,32 @@ extension Workspace: STM32Workflow.Interaction {
     connection: ChipConnection, probeCount: Int
   ) {
     refreshDevices()
-    if method == .uart {
-      let connection = ChipConnection.uart(try requireSerial())
-      activeFlashConnection = connection
-      return (connection, probes.count)
-    }
-    if let issue = probeIssue { throw TekmorError(issue) }
-    guard let probe = flashProbe else {
+    if let issue = flashSelectionIssue { throw TekmorError(issue) }
+    guard let connection = currentTarget, method == configuration.flash,
+      confirmedHardwareConnection.map({ $0 == connection }) ?? true
+    else {
       throw TekmorError(
         l10n.tr(
-          .init("error.selectFlashSTLink", defaultValue: "Select an ST-LINK probe for flashing.")))
+          .init(
+            "error.confirmedTargetChanged",
+            defaultValue: "The selected target changed or disconnected.")))
     }
-    activeFlashConnection = .swd(probe)
-    return (.swd(probe), probes.count)
+    return (connection, probes.count)
+  }
+
+  func prepareProgrammerConnection(_ connection: ChipConnection) async throws {
+    activeFlashConnection = connection
+    if case .uart(let device) = connection {
+      if serial?.device.isSamePort(as: device) == true, let monitor = serial?.device {
+        pausedUARTMonitor = (monitor, configuration.serial)
+        await dropSerial()?.value
+      }
+      let pending = closingSerialDevices.compactMap { id, port in
+        port.isSamePort(as: device) ? serialReleaseTasks[id] : nil
+      }
+      for release in pending { await release.value }
+    }
+    try Task.checkCancellation()
   }
 
   func checkTools(build: Bool, programmer: Bool) async throws {
@@ -1994,6 +2099,8 @@ extension Workspace: STM32Workflow.Interaction {
       lastFirmwareUsage = usage
     case .writeEnded:
       writing = false
+    case .applicationStarted:
+      uartApplicationStarted = true
     case .flashProgress:
       break
     }
@@ -2014,6 +2121,13 @@ extension Workspace: STM32Workflow.Interaction {
       statusState = .writingAndVerifying
     case .resetting:
       statusState = .verifiedResetting
+    case .startingApplication:
+      statusState = .startingApplication
+    case .resettingTarget:
+      statusState = .resettingTarget
+    case .erasing:
+      writing = true
+      statusState = .erasingFlash
     }
   }
 }

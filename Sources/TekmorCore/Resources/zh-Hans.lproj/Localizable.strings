@@ -106,4 +106,8 @@
 "core.hardware.serialSendFailed" = "无法完成向 %@ 的串口发送，部分字节可能已发出。";
 "core.serial.invalidPayloadSize" = "请输入包含行尾符在内的 1 至 65536 字节指令。";
 "core.serial.invalidHEX" = "请输入完整的 HEX 字节对，例如 01 02 FF。";
+"core.cube.requiresSWD" = "复位目标需要 ST-LINK / SWD 连接。";
+"core.cube.targetResetUnconfirmed" = "未能确认目标已复位。请查看日志或手动复位。";
+"core.cube.eraseUnconfirmed" = "未能确认整片 Flash 已擦除。请查看日志。";
+"core.cube.startUnconfirmed" = "未能确认 UART 应用已启动。请手动复位目标板。";
 "core.cmake.invalidCacheDirectory" = "Tekmor 的构建缓存目录无效。";
