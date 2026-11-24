@@ -14,6 +14,54 @@ public struct FirmwareImage: Sendable {
 
   public let segments: [Segment]
   public let binaryAddress: UInt64?
+  /// Allocated ELF sections, when the file contains a valid section table.
+  public let sections: [FirmwareSection]?
+  private let executableRanges: [Range<UInt64>]?
+  public var staticRAMBytes: Int? {
+    sections.map { $0.filter(\.countsTowardStaticRAM).reduce(0) { $0 + $1.bytes } }
+  }
+
+  public var internalFlashBytes: Int? {
+    guard
+      segments.allSatisfy({
+        $0.address >= Self.standardFlashStart && $0.range.upperBound <= 0x1000_0000
+      })
+    else { return nil }
+    return byteCount
+  }
+
+  /// A Flash vector table that refers to an MSP and Thumb reset handler in the image.
+  var applicationStartAddress: UInt64? {
+    let address: UInt64
+    if let sections {
+      let vectors = sections.filter { $0.name == ".isr_vector" && $0.bytes >= 8 }
+      guard vectors.count == 1, let vector = vectors.first else { return nil }
+      address = vector.address
+    } else {
+      address = Self.standardFlashStart
+    }
+    guard address >= Self.standardFlashStart, address.isMultiple(of: 128) else { return nil }
+    var vector = Data()
+    var nextAddress = address
+    for segment in segments where segment.range.contains(nextAddress) {
+      let offset = Int(nextAddress - segment.address)
+      let bytes = segment.bytes.dropFirst(offset).prefix(8 - vector.count)
+      vector.append(contentsOf: bytes)
+      nextAddress += UInt64(bytes.count)
+      if vector.count == 8 { break }
+    }
+    guard vector.count == 8 else { return nil }
+    let stack = ARMELF32.word32(in: vector, at: vector.startIndex)
+    let reset = UInt64(ARMELF32.word32(in: vector, at: vector.startIndex + 4))
+    let code = reset & ~1
+    guard stack.isMultiple(of: 4),
+      (0x1000_0004...0x1008_0000).contains(stack) || (0x2000_0004..<0x4000_0000).contains(stack),
+      reset & 1 == 1, code >= address + 8,
+      (executableRanges ?? ranges).contains(where: { $0.contains(code) && $0.contains(code + 1) })
+    else { return nil }
+    return address
+  }
+
   public var byteCount: Int { segments.reduce(0) { $0 + $1.bytes.count } }
   public var ranges: [Range<UInt64>] {
     var ranges: [Range<UInt64>] = []
@@ -49,10 +97,21 @@ public struct FirmwareImage: Sendable {
     self.binaryAddress = format.lowercased() == "bin" ? binaryAddress : nil
     switch format.lowercased() {
     case "elf", "axf", "out":
-      segments = try Self.elfSegments(data)
+      let loads = try Self.elfLoadSegments(data)
+      segments = loads.map {
+        Segment(address: UInt64($0.address), bytes: data.subdata(in: $0.fileBytes))
+      }
+      executableRanges = loads.filter(\.executable).map {
+        UInt64($0.address)..<UInt64($0.address + $0.fileBytes.count)
+      }
+      sections = ARMELF32.sections(in: data)
     case "hex":
       segments = try Self.hexSegments(data)
+      sections = nil
+      executableRanges = nil
     case "bin":
+      sections = nil
+      executableRanges = nil
       guard let binaryAddress, binaryAddress < Self.addressLimit else {
         throw TekmorError(
           TekmorLocalization.core(
@@ -173,7 +232,7 @@ public struct FirmwareImage: Sendable {
     output.append(10)
   }
 
-  private static func elfSegments(_ data: Data) throws -> [Segment] {
+  private static func elfLoadSegments(_ data: Data) throws -> [ARMELF32.LoadSegment] {
     try ARMELF32.loadSegments(
       in: data,
       invalidHeader: .init(
@@ -185,9 +244,7 @@ public struct FirmwareImage: Sendable {
         defaultValue: "ELF load segment is truncated or has an invalid size.",
         bundle: .atURL(Bundle.module.bundleURL)
       )
-    ).map { segment in
-      Segment(address: UInt64(segment.address), bytes: data.subdata(in: segment.fileBytes))
-    }
+    )
   }
 
   private static func hexSegments(_ data: Data) throws -> [Segment] {

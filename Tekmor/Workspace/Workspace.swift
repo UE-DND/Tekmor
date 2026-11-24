@@ -359,6 +359,9 @@ final class Workspace {
   private(set) var buildToolsDescription: String?
   private(set) var lastArtifact: URL?
   private(set) var firmwareByteCount: Int?
+  private(set) var firmwareFlashBytes: Int?
+  private(set) var firmwareRAMBytes: Int?
+  private(set) var firmwareSections: [FirmwareSection] = []
   private(set) var firmwareRanges: [Range<UInt64>] = []
   private(set) var toolDirectory: URL
   private(set) var copiedNotice: String?
@@ -1439,6 +1442,9 @@ final class Workspace {
   private func clearArtifactDetails() {
     artifactReadID = UUID()
     firmwareByteCount = nil
+    firmwareFlashBytes = nil
+    firmwareRAMBytes = nil
+    firmwareSections = []
     firmwareRanges = []
   }
 
@@ -1451,6 +1457,9 @@ final class Workspace {
       }.value
       guard let self, self.artifactReadID == token, self.lastArtifact == file else { return }
       self.firmwareByteCount = image?.byteCount
+      self.firmwareFlashBytes = image?.internalFlashBytes
+      self.firmwareRAMBytes = image?.staticRAMBytes
+      self.firmwareSections = image?.sections ?? []
       self.firmwareRanges = image?.ranges ?? []
     }
   }

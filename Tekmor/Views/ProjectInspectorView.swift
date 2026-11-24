@@ -130,23 +130,14 @@ struct ProjectInspectorView: View {
 
       if let byteCount = workspace.firmwareByteCount {
         LabeledContent(
-          l10n.tr(.init("inspector.firmwareData", defaultValue: "Firmware Data")),
-          value: workspace.formatBytes(byteCount)
+          l10n.tr(
+            workspace.firmwareRAMBytes != nil && workspace.firmwareFlashBytes != nil
+              ? .init("inspector.flashLoad", defaultValue: "Flash Load")
+              : .init("inspector.firmwareData", defaultValue: "Firmware Data")),
+          value: workspace.formatBytes(workspace.firmwareFlashBytes ?? byteCount)
         )
         .font(.system(size: 11.5))
         .foregroundStyle(TekmorColor.textSecondary)
-      }
-
-      if !workspace.firmwareRanges.isEmpty {
-        VStack(alignment: .leading, spacing: 5) {
-          sectionTitle(l10n.tr(.init("inspector.loadAddresses", defaultValue: "Load Addresses")))
-          ForEach(workspace.firmwareRanges, id: \.self) { range in
-            Text(FirmwareImage.addressLabel(range))
-              .font(.system(size: 11, design: .monospaced))
-              .foregroundStyle(TekmorColor.textSecondary)
-              .textSelection(.enabled)
-          }
-        }
       }
 
       if let usage = workspace.lastFirmwareUsage {
@@ -174,6 +165,36 @@ struct ProjectInspectorView: View {
             )
             .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(TekmorColor.textSecondary)
+          }
+        }
+      }
+
+      if !workspace.firmwareRanges.isEmpty {
+        VStack(alignment: .leading, spacing: 5) {
+          sectionTitle(l10n.tr(.init("inspector.loadAddresses", defaultValue: "Load Addresses")))
+          ForEach(workspace.firmwareRanges, id: \.self) { range in
+            Text(FirmwareImage.addressLabel(range))
+              .font(.system(size: 11, design: .monospaced))
+              .foregroundStyle(TekmorColor.textSecondary)
+              .textSelection(.enabled)
+          }
+        }
+      }
+
+      if let ram = workspace.firmwareRAMBytes {
+        LabeledContent(
+          l10n.tr(.init("inspector.staticRAM", defaultValue: "RAM (.data + .bss)")),
+          value: workspace.formatBytes(ram)
+        )
+        .font(.system(size: 11.5))
+        .foregroundStyle(TekmorColor.textSecondary)
+        VStack(alignment: .leading, spacing: 5) {
+          sectionTitle(l10n.tr(.init("inspector.sectionSizes", defaultValue: "ELF Sections")))
+          ForEach(workspace.firmwareSections) { section in
+            LabeledContent(section.name, value: workspace.formatBytes(section.bytes))
+              .font(.system(size: 11, design: .monospaced))
+              .foregroundStyle(TekmorColor.textSecondary)
+              .help(String(format: "0x%08llX", section.address))
           }
         }
       }

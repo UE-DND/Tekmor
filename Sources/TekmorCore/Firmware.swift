@@ -14,3 +14,16 @@ public struct FirmwareUsage: Sendable, Equatable {
     self.flashCapacity = flashCapacity
   }
 }
+
+/// An allocated ELF section and its runtime address and size.
+public struct FirmwareSection: Sendable, Equatable, Identifiable {
+  public let index: Int
+  public let name: String
+  public let address: UInt64
+  public let bytes: Int
+  public var id: Int { index }
+
+  var countsTowardStaticRAM: Bool {
+    name == ".data" || name.hasPrefix(".data.") || name == ".bss" || name.hasPrefix(".bss.")
+  }
+}

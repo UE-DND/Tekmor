@@ -218,6 +218,47 @@ private func setWord(_ data: inout Data, at offset: Int, value: Int) {
   }
 }
 
+@Test func elfCountsAllocatedSectionsAndValidatesUARTVector() throws {
+  var data = elf()
+  let strings = Data([0] + Array(".isr_vector\0.text\0.data\0.bss\0.debug_info\0".utf8))
+  data.append(strings)
+  let table = data.count
+  data.append(Data(repeating: 0, count: 7 * 40))
+  setWord(&data, at: 32, value: table)
+  setWord(&data, at: 46, value: 40 | (7 << 16))
+  data[50] = 1
+  setWord(&data, at: table + 40 + 4, value: 3)
+  setWord(&data, at: table + 40 + 16, value: 0x110)
+  setWord(&data, at: table + 40 + 20, value: strings.count)
+  let sections = [
+    (1, 1, 2, 0x0800_0000, 0x100, 8),
+    (13, 1, 6, 0x0800_0008, 0x108, 8),
+    (19, 1, 3, 0x2000_0000, 0x10c, 4),
+    (25, 8, 3, 0x2000_0004, 0, 36),
+    (30, 1, 0, 0, 0x110, 3),
+  ]
+  for (index, section) in sections.enumerated() {
+    let header = table + (index + 2) * 40
+    for (field, value) in [section.0, section.1, section.2, section.3, section.4, section.5]
+      .enumerated()
+    {
+      setWord(&data, at: header + field * 4, value: value)
+    }
+  }
+  let image = try FirmwareImage(data: data, format: "elf")
+  #expect(image.internalFlashBytes == 16)
+  #expect(image.staticRAMBytes == 40)
+  #expect(image.sections?.map(\.name) == [".isr_vector", ".text", ".data", ".bss"])
+  #expect(image.applicationStartAddress == 0x0800_0000)
+
+  setWord(&data, at: 0x104, value: 0x0801_000d)
+  #expect(try FirmwareImage(data: data, format: "elf").applicationStartAddress == nil)
+  setWord(&data, at: table + 3 * 40, value: strings.count)
+  let corruptSections = try FirmwareImage(data: data, format: "elf")
+  #expect(corruptSections.staticRAMBytes == nil)
+  #expect(corruptSections.internalFlashBytes == 16)
+}
+
 @Test func genericFirmwareUsesPhysicalAddressesAndKeepsGaps() throws {
   var data = elf()
   setWord(&data, at: 44, value: 2)

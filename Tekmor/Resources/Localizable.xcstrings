@@ -5838,6 +5838,54 @@
           }
         }
       }
+    },
+    "inspector.flashLoad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash Load"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash 装载量"
+          }
+        }
+      }
+    },
+    "inspector.sectionSizes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ELF Sections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ELF 各节用量"
+          }
+        }
+      }
+    },
+    "inspector.staticRAM" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM (.data + .bss)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAM（.data + .bss）"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

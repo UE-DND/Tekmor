@@ -49,6 +49,44 @@ enum ARMELF32 {
     }
   }
 
+  // Called after validating the ARM executable header and its program headers.
+  static func sections(in data: Data) -> [FirmwareSection]? {
+    let start = data.startIndex
+    let offset = word32(in: data, at: start + 32)
+    let stride = word16(in: data, at: start + 46)
+    let count = word16(in: data, at: start + 48)
+    let namesIndex = word16(in: data, at: start + 50)
+    guard stride == 40, count > 0, offset >= 52, offset + count * stride <= data.count,
+      (1..<count).contains(namesIndex)
+    else { return nil }
+    let namesHeader = start + offset + namesIndex * stride
+    let namesOffset = word32(in: data, at: namesHeader + 16)
+    let namesSize = word32(in: data, at: namesHeader + 20)
+    guard word32(in: data, at: namesHeader + 4) == 3, namesSize > 0,
+      namesOffset + namesSize <= data.count
+    else { return nil }
+
+    let namesStart = start + namesOffset
+    let namesEnd = namesStart + namesSize
+    var sections: [FirmwareSection] = []
+    for index in 1..<count {
+      let header = start + offset + index * stride
+      let flags = word32(in: data, at: header + 8)
+      let size = word32(in: data, at: header + 20)
+      guard flags & 2 != 0, size > 0 else { continue }  // SHF_ALLOC
+      let nameIndex = namesStart + word32(in: data, at: header)
+      let address = word32(in: data, at: header + 12)
+      let type = word32(in: data, at: header + 4)
+      let fileOffset = word32(in: data, at: header + 16)
+      guard nameIndex < namesEnd, let end = data[nameIndex..<namesEnd].firstIndex(of: 0),
+        address + size <= (1 << 32), type == 8 || fileOffset + size <= data.count,
+        let name = String(data: data[nameIndex..<end], encoding: .utf8)
+      else { return nil }
+      sections.append(.init(index: index, name: name, address: UInt64(address), bytes: size))
+    }
+    return sections
+  }
+
   static func word32(in data: Data, at index: Data.Index) -> Int {
     word16(in: data, at: index) | word16(in: data, at: index + 2) << 16
   }
