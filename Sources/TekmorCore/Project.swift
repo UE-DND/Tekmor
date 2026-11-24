@@ -16,7 +16,7 @@ public enum FlashMethod: String, CaseIterable, Sendable, Identifiable {
 }
 
 public struct SerialSettings: Equatable, Sendable {
-  public enum Parity: CaseIterable, Sendable {
+  public enum Parity: String, CaseIterable, Sendable {
     case none, even, odd
   }
 

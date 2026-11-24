@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 public struct STM32Workflow {
   public enum Action: Sendable {
-    case inspect, build, run
+    case inspect, reconfigure, build, run
     case flash(URL, address: UInt64?, standalone: Bool)
   }
 
@@ -90,7 +90,7 @@ public struct STM32Workflow {
         interaction.receive(.selectedImage(file, address: address, standalone: standalone))
         try await flash(file, address: address, target: target, interaction: interaction, log: log)
         return .flashed
-      case .inspect, .build, .run:
+      case .inspect, .reconfigure, .build, .run:
         return try await configureAndBuild(
           action, context: context, interaction: interaction, log: log)
       }
@@ -125,14 +125,17 @@ public struct STM32Workflow {
 
     interaction.receive(.stage(.listingPresets))
     let presets = CMakeBuild.sortedPresets(try await builder.presets(in: project, cli: cli))
-    if configuration.cmake.configurePreset == nil && configuration.cmake.toolchainFile == nil {
+    if configuration.cmake.toolchainFile == nil,
+      configuration.cmake.configurePreset.map({ !presets.contains($0) }) ?? true
+    {
       configuration.cmake.configurePreset = presets.first
     }
     interaction.receive(.presets(presets, selected: configuration.cmake.configurePreset))
     try configuration.validate()
     interaction.receive(.stage(.configuring))
+    let fresh = if case .reconfigure = action { true } else { false }
     let selection = try await builder.configure(
-      project: project, options: configuration.cmake, cli: cli, log: log)
+      project: project, options: configuration.cmake, cli: cli, fresh: fresh, log: log)
     interaction.receive(
       .configuredBuild(generator: selection.generator, toolsDescription: selection.toolsDescription)
     )
@@ -142,7 +145,10 @@ public struct STM32Workflow {
     if selection.targets.count == 1 { configuration.cmake.target = selection.targets[0] }
     interaction.receive(.targets(selection.targets, selected: configuration.cmake.target))
 
-    if case .inspect = action { return .inspected(selection.targets.count) }
+    switch action {
+    case .inspect, .reconfigure: return .inspected(selection.targets.count)
+    default: break
+    }
     guard let name = configuration.cmake.target else { return .awaitingTarget }
     interaction.receive(.stage(.building(name)))
     let elf = try await builder.build(name, selection: selection, log: log)

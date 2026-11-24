@@ -86,6 +86,15 @@ struct WorkspaceCommands: Commands {
       Button(l10n.tr(.init("action.build", defaultValue: "Build"))) { workspace?.start(.build) }
         .keyboardShortcut("b")
         .disabled(workspace?.canBuildProject != true)
+      Button(l10n.tr(.init("action.reconfigureCMake", defaultValue: "Reconfigure CMake"))) {
+        workspace?.start(.reconfigure)
+      }
+      .disabled(workspace?.canConfigureProject != true)
+      Button(l10n.tr(.init("action.cleanProjectCache", defaultValue: "Clear Project Build Cache")))
+      {
+        workspace?.start(.cleanProjectCache)
+      }
+      .disabled(workspace?.canStartAction != true || workspace?.project == nil)
       Button(l10n.tr(.init("help.cancelTask", defaultValue: "Cancel current task"))) {
         workspace?.cancel()
       }

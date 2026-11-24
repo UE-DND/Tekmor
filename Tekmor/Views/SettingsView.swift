@@ -229,8 +229,10 @@ private struct StorageSettingsTab: View {
               l10n.tr(.init("action.clearBuildCache", defaultValue: "Clear Build Cache")),
               role: .destructive
             ) {
-              workspace.clearBuildCache()
-              Task { await refreshCacheSize() }
+              Task {
+                await workspace.clearBuildCache()
+                await refreshCacheSize()
+              }
             }
             .disabled(!workspace.canStartAction || (cacheBytes ?? 0) == 0)
           }

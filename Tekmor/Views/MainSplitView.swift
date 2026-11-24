@@ -148,6 +148,16 @@ struct MainSplitView: View {
           )
           .disabled(!workspace.canChooseFirmware)
           Divider()
+          Button(l10n.tr(.init("action.reconfigureCMake", defaultValue: "Reconfigure CMake"))) {
+            workspace.start(.reconfigure)
+          }
+          .disabled(!workspace.canConfigureProject)
+          Button(
+            l10n.tr(.init("action.cleanProjectCache", defaultValue: "Clear Project Build Cache"))
+          ) {
+            workspace.start(.cleanProjectCache)
+          }
+          Divider()
           Button(
             l10n.tr(.init("action.revealProjectInFinder", defaultValue: "Reveal Project in Finder"))
           ) { workspace.revealProject() }

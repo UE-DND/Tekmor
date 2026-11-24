@@ -49,21 +49,46 @@ public struct CMakeBuild: Sendable {
   }
 
   public func configure(
-    project: URL, options: CMakeSettings, cli: CubeCLI, log: @escaping ToolLog = { _ in }
+    project: URL, options: CMakeSettings, cli: CubeCLI, fresh: Bool = false,
+    preferCached: Bool = false, log: @escaping ToolLog = { _ in }
   ) async throws -> BuildSelection {
     let files = FileManager.default
     let project = project.resolvingSymlinksInPath()
     let runtime = try await cli.buildRuntime()
     let directory = try await buildDirectory(project: project, options: options, runtime: runtime)
+    try Task.checkCancellation()
+    let reply = directory.appendingPathComponent(".cmake/api/v1/reply")
     let query = directory.appendingPathComponent(".cmake/api/v1/query/codemodel-v2")
+    let root = cache.resolvingSymlinksInPath().standardizedFileURL
+    guard
+      directory.resolvingSymlinksInPath().standardizedFileURL.path
+        == root.appendingPathComponent(directory.lastPathComponent).path,
+      isContained(query.deletingLastPathComponent(), in: directory),
+      isContained(reply, in: directory)
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.invalidCacheDirectory",
+            defaultValue: "Tekmor's build cache directory is invalid.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    if preferCached, !fresh, Self.cachedProjectPath(in: directory) == project.path,
+      let index = try? fileAPIIndex(in: reply),
+      let selection = try? selection(
+        from: index, in: reply, project: project, directory: directory, runtime: runtime)
+    {
+      return selection
+    }
     try files.createDirectory(
       at: query.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(project.path.utf8).write(
+      to: directory.appendingPathComponent(Self.ownershipFile), options: .atomic)
     try Data().write(to: query, options: .atomic)
     try Data().write(
       to: query.deletingLastPathComponent().appendingPathComponent("toolchains-v1"),
       options: .atomic)
     // Each successful configure must produce a new response for this query.
-    let reply = directory.appendingPathComponent(".cmake/api/v1/reply")
     if files.fileExists(atPath: reply.path) { try files.removeItem(at: reply) }
 
     var args = ["-S", project.path, "-B", directory.path]
@@ -96,34 +121,15 @@ public struct CMakeBuild: Sendable {
       }
       args += ["-G", "Ninja", "--toolchain", toolchainURL.path, "-DCMAKE_BUILD_TYPE=Debug"]
     }
-    let result = try await runtime.cli.run(["cmake"] + args, in: project, log: log)
+    let configureArgs = ["cmake"] + (fresh ? ["--fresh"] : []) + args
+    let result = try await runtime.cli.run(configureArgs, in: project, log: log)
     try result.requireSuccess(
       TekmorLocalization.core(
         .init(
           "core.cmake.opConfigure", defaultValue: "Configuring CMake",
           bundle: .atURL(Bundle.module.bundleURL))))
-    let indexURL = try files.contentsOfDirectory(at: reply, includingPropertiesForKeys: nil)
-      .first { $0.lastPathComponent.hasPrefix("index-") && $0.pathExtension == "json" }
-    guard let indexURL else {
-      throw TekmorError(
-        TekmorLocalization.core(
-          .init(
-            "core.cmake.missingFileAPI",
-            defaultValue: "CMake did not generate a File API target index.",
-            bundle: .atURL(Bundle.module.bundleURL))))
-    }
-
-    var index = try load(Index.self, at: indexURL)
-    let generator = index.cmake.generator.name
-    guard ["Unix Makefiles", "Ninja"].contains(generator) else {
-      throw TekmorError(
-        TekmorLocalization.core(
-          .init(
-            "core.cmake.unsupportedGenerator",
-            defaultValue: "This preset uses \(generator). Select a Unix Makefiles or Ninja preset.",
-            bundle: .atURL(Bundle.module.bundleURL))))
-    }
-    if generator == "Unix Makefiles" {
+    var index = try fileAPIIndex(in: reply)
+    if index.cmake.generator.name == "Unix Makefiles" {
       try files.removeItem(at: reply)
       let configured = try await runtime.cli.run(
         ["cmake"] + args + ["-DCMAKE_MAKE_PROGRAM:FILEPATH=/usr/bin/make"], in: project, log: log)
@@ -132,18 +138,41 @@ public struct CMakeBuild: Sendable {
           .init(
             "core.cmake.opConfigure", defaultValue: "Configuring CMake",
             bundle: .atURL(Bundle.module.bundleURL))))
-      guard
-        let refreshed = try files.contentsOfDirectory(at: reply, includingPropertiesForKeys: nil)
-          .first(where: { $0.lastPathComponent.hasPrefix("index-") && $0.pathExtension == "json" })
-      else {
-        throw TekmorError(
-          TekmorLocalization.core(
-            .init(
-              "core.cmake.missingFileAPI",
-              defaultValue: "CMake did not generate a File API target index.",
-              bundle: .atURL(Bundle.module.bundleURL))))
-      }
-      index = try load(Index.self, at: refreshed)
+      index = try fileAPIIndex(in: reply)
+    }
+    return try selection(
+      from: index, in: reply, project: project, directory: directory, runtime: runtime)
+  }
+
+  private func fileAPIIndex(in reply: URL) throws -> Index {
+    let files = try FileManager.default.contentsOfDirectory(
+      at: reply, includingPropertiesForKeys: nil)
+    guard
+      let name = files.map(\.lastPathComponent).sorted(by: >).first(where: {
+        $0.hasPrefix("index-") && $0.hasSuffix(".json")
+      })
+    else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.missingFileAPI",
+            defaultValue: "CMake did not generate a File API target index.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+    return try load(Index.self, at: jsonFile(name, in: reply))
+  }
+
+  private func selection(
+    from index: Index, in reply: URL, project: URL, directory: URL, runtime: CubeBuildRuntime
+  ) throws -> BuildSelection {
+    let generator = index.cmake.generator.name
+    guard ["Unix Makefiles", "Ninja"].contains(generator) else {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.unsupportedGenerator",
+            defaultValue: "This preset uses \(generator). Select a Unix Makefiles or Ninja preset.",
+            bundle: .atURL(Bundle.module.bundleURL))))
     }
     guard let toolchains = index.reply["toolchains-v1"] else {
       throw TekmorError(
@@ -192,6 +221,41 @@ public struct CMakeBuild: Sendable {
       targets: artifacts.keys.sorted(), directory: directory, artifacts: artifacts,
       project: project, generator: generator,
       toolsDescription: "\(compiler.name) \(compiler.version) · \(generator)", cli: runtime.cli)
+  }
+
+  private static let ownershipFile = ".tekmor-project"
+
+  private static func cachedProjectPath(in directory: URL) -> String? {
+    let marker = directory.appendingPathComponent(ownershipFile)
+    if let path = try? String(contentsOf: marker, encoding: .utf8), !path.isEmpty {
+      return path
+    }
+    let cache = directory.appendingPathComponent("CMakeCache.txt")
+    guard let contents = try? String(contentsOf: cache, encoding: .utf8) else { return nil }
+    let prefix = "CMAKE_HOME_DIRECTORY:INTERNAL="
+    return contents.split(whereSeparator: \.isNewline).first(where: { $0.hasPrefix(prefix) })
+      .map { String($0.dropFirst(prefix.count)) }
+  }
+
+  /// Removes identified build directories belonging to this project from Tekmor's cache.
+  public func cleanCache(for project: URL) throws {
+    let files = FileManager.default
+    let root = cache.resolvingSymlinksInPath().standardizedFileURL
+    guard files.fileExists(atPath: root.path) else { return }
+    let path = project.resolvingSymlinksInPath().standardizedFileURL.path
+    let directories = try files.contentsOfDirectory(
+      at: root, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+    for directory in directories {
+      try Task.checkCancellation()
+      guard
+        directory.lastPathComponent.range(of: "^[a-f0-9]{64}$", options: .regularExpression)
+          != nil,
+        let values = try? directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
+        values.isDirectory == true, values.isSymbolicLink != true,
+        Self.cachedProjectPath(in: directory) == path
+      else { continue }
+      try files.removeItem(at: directory)
+    }
   }
 
   public func build(

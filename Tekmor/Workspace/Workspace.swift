@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 @MainActor @Observable
 final class Workspace {
   enum Action {
-    case inspect, build, run
+    case inspect, reconfigure, cleanProjectCache, build, run
     case flash(URL, address: UInt64?, standalone: Bool)
     case installCube
     case installBundle(String)
@@ -16,7 +16,7 @@ final class Workspace {
     var isToolAction: Bool {
       switch self {
       case .installCube, .installBundle, .prepareAllTools: true
-      case .inspect, .build, .run, .flash: false
+      case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash: false
       }
     }
   }
@@ -138,6 +138,7 @@ final class Workspace {
     case flashingSWD
     case verifiedNeedsReset
     case verifiedAndReset
+    case projectCacheCleared
     case custom(String)
 
     func text(using l10n: AppL10n) -> String {
@@ -183,6 +184,8 @@ final class Workspace {
         )
       case .verifiedAndReset:
         l10n.tr(.init("status.verifiedAndReset", defaultValue: "Flashed, verified & reset"))
+      case .projectCacheCleared:
+        l10n.tr(.init("status.projectCacheCleared", defaultValue: "Project build cache cleared"))
       case .custom(let message): message
       }
     }
@@ -291,7 +294,9 @@ final class Workspace {
       )
     }
   }
-  var configuration = ProjectConfiguration()
+  var configuration = ProjectConfiguration() {
+    didSet { saveProjectPreferences() }
+  }
   private(set) var presets: [String] = []
   private(set) var targets: [String] = []
   private(set) var devices: [SerialDevice] = []
@@ -305,22 +310,10 @@ final class Workspace {
   private(set) var hasCheckedCube = false
   var binaryFirmware: URL?
   private(set) var serialPath: String? {
-    didSet {
-      if let serialPath {
-        preferences.set(serialPath, forKey: "monitorSerialPath")
-      } else {
-        preferences.removeObject(forKey: "monitorSerialPath")
-      }
-    }
+    didSet { saveSerialSelection(serialPath, key: "monitorSerialPath") }
   }
   private(set) var flashSerialPath: String? {
-    didSet {
-      if let flashSerialPath {
-        preferences.set(flashSerialPath, forKey: "flashSerialPath")
-      } else {
-        preferences.removeObject(forKey: "flashSerialPath")
-      }
-    }
+    didSet { saveSerialSelection(flashSerialPath, key: "flashSerialPath") }
   }
   private var serialTransmitByProject: [URL?: SerialTransmit] = [:]
   var serialCommand: SerialCommand {
@@ -340,6 +333,7 @@ final class Workspace {
   private(set) var activeFlashConnection: ChipConnection?
   private(set) var serialConnected = false
   private(set) var sendingSerial = false
+  private(set) var discoveringTargets = false
   private(set) var running = false
   private(set) var writing = false
   private(set) var choosingFile = false
@@ -369,6 +363,9 @@ final class Workspace {
   @ObservationIgnored private let preferences = UserDefaults.standard
   @ObservationIgnored private let workflow = STM32Workflow()
   @ObservationIgnored private var operation: Task<Void, Never>?
+  @ObservationIgnored private var restoringProjectPreferences = false
+  @ObservationIgnored private var targetDiscovery: Task<Void, Never>?
+  @ObservationIgnored private var targetDiscoveryID = UUID()
   @ObservationIgnored private var artifactReadID = UUID()
   @ObservationIgnored private var standaloneImage: (file: URL, address: UInt64?)?
   @ObservationIgnored private var chipTask: Task<Void, Never>?
@@ -435,15 +432,9 @@ final class Workspace {
         else { return nil }
         return ProjectFolder(path: path, tint: tint)
       }
-    let savedMonitorSerial = defaults.string(forKey: "monitorSerialPath")
-    let savedFlashSerial = defaults.string(forKey: "flashSerialPath")
+    serialPath = defaults.string(forKey: "monitorSerialPath")
+    flashSerialPath = defaults.string(forKey: "flashSerialPath")
     refreshDevices()
-    if let savedMonitorSerial, devices.contains(where: { $0.id == savedMonitorSerial }) {
-      serialPath = savedMonitorSerial
-    }
-    if let savedFlashSerial, devices.contains(where: { $0.id == savedFlashSerial }) {
-      flashSerialPath = savedFlashSerial
-    }
 
     if let last = defaults.string(forKey: "lastProject"),
       let folder = projectFolders.first(where: { $0.path == last })
@@ -482,10 +473,14 @@ final class Workspace {
     return true
   }
   var canChooseFirmware: Bool { canStartAction && programmerIssue == nil }
-  var canCancelTask: Bool { running && !writing }
+  var canCancelTask: Bool { running && !writing && operation != nil }
   var canArrangeConsole: Bool { isShowingProjectArea && hasConsoleContent }
-  var canBuildProject: Bool {
+  var canConfigureProject: Bool {
     project != nil && canStartAction && buildToolsIssue == nil && !loadingCube
+  }
+  var canBuildProject: Bool {
+    guard let target = configuration.cmake.target else { return false }
+    return canConfigureProject && targets.contains(target)
   }
   var canRunProject: Bool {
     canBuildProject && programmerIssue == nil && flashSelectionIssue == nil
@@ -535,7 +530,12 @@ final class Workspace {
     if devices.isEmpty {
       return l10n.tr(.init("issue.noSerialPort", defaultValue: "No serial port detected"))
     }
-    return l10n.tr(.init("quickbar.selectFlashPort", defaultValue: "Select Flash Port"))
+    return l10n.tr(
+      flashSerialPath == nil
+        ? .init("quickbar.selectFlashPort", defaultValue: "Select Flash Port")
+        : .init(
+          "issue.serialDisconnected",
+          defaultValue: "Selected serial port disconnected; choose another"))
   }
 
   var flashSerialOccupancyIssue: String? {
@@ -651,11 +651,12 @@ final class Workspace {
       title: l10n.tr(
         .init("panel.openProject", defaultValue: "Open a project containing CMakeLists.txt"))
     ) {
-      self.open($0.resolvingSymlinksInPath().standardizedFileURL)
+      self.open($0)
     }
   }
 
   private func open(_ url: URL) {
+    let url = url.resolvingSymlinksInPath().standardizedFileURL
     if project?.path == url.path {
       showProjectArea()
     } else if canStartAction {
@@ -676,17 +677,35 @@ final class Workspace {
                 "No CMakeLists.txt found in the selected directory. Choose the project root.")))
       }
       let suggestedPresets = proposedPresets(in: url)
-      var nextConfiguration = ProjectConfiguration()
-      nextConfiguration.flash = defaultFlashMethod
-      nextConfiguration.serial.baud = defaultBaudRate
-      nextConfiguration.cmake.configurePreset = suggestedPresets.first
+      let saved = ProjectPreferences.load(for: url.path, from: preferences)
+      var nextConfiguration = saved?.configuration ?? defaultConfiguration()
+      if nextConfiguration.cmake.configurePreset == nil,
+        nextConfiguration.cmake.toolchainFile == nil
+      {
+        nextConfiguration.cmake.configurePreset = suggestedPresets.first
+      }
+      if let toolchain = nextConfiguration.cmake.toolchainFile,
+        !FileManager.default.fileExists(atPath: url.appendingPathComponent(toolchain).path)
+      {
+        nextConfiguration.cmake = CMakeSettings(configurePreset: suggestedPresets.first)
+      }
       dropSerial()
+      restoringProjectPreferences = true
       project = url
       preferences.set(url.path, forKey: "lastProject")
       configuration = nextConfiguration
-      presets = suggestedPresets
+      serialPath = saved?.monitorPort
+      flashSerialPath = saved?.flashPort
+      if saved == nil {
+        serialPath = preferences.string(forKey: "monitorSerialPath")
+        flashSerialPath = preferences.string(forKey: "flashSerialPath")
+      }
+      let selectedPreset = nextConfiguration.cmake.configurePreset.map { [$0] } ?? []
+      presets = CMakeBuild.sortedPresets(suggestedPresets + selectedPreset)
       targets = []
       refreshDevices()
+      restoringProjectPreferences = false
+      saveProjectPreferences()
       if !projectFolders.contains(where: { $0.path == url.path }) {
         projectFolders.append(ProjectFolder(path: url.path, tint: .automatic))
       }
@@ -704,6 +723,7 @@ final class Workspace {
       showsStandaloneConsole = false
       showProjectArea()
       if activePane == .terminal { openTerminalSession() }
+      scheduleTargetDiscovery()
     } catch {
       reportError(error.localizedDescription)
     }
@@ -715,14 +735,16 @@ final class Workspace {
   }
 
   private func unloadProject() {
+    _ = cancelTargetDiscovery()
     dropSerial()
     if let project { terminals.remove(project) }
     project = nil
     showProjectArea()
     preferences.removeObject(forKey: "lastProject")
-    configuration = ProjectConfiguration()
-    configuration.flash = defaultFlashMethod
-    configuration.serial.baud = defaultBaudRate
+    configuration = defaultConfiguration()
+    serialPath = preferences.string(forKey: "monitorSerialPath")
+    flashSerialPath = preferences.string(forKey: "flashSerialPath")
+    refreshDevices()
     presets = []
     targets = []
     lastArtifact = nil
@@ -763,18 +785,28 @@ final class Workspace {
       .init(
         "panel.chooseToolchain", defaultValue: "Select a CMake toolchain file inside the project"))
     chooseFile(using: panel) { file in
-      guard self.project == project, file.path.hasPrefix(project.path + "/") else { return }
-      self.configuration.cmake.toolchainFile = String(file.path.dropFirst(project.path.count + 1))
+      let path = file.resolvingSymlinksInPath().standardizedFileURL.path
+      guard self.project == project, path.hasPrefix(project.path + "/") else { return }
+      self.configuration.cmake.toolchainFile = String(path.dropFirst(project.path.count + 1))
+      self.invalidateTargets()
     }
   }
 
   func setConfigurePreset(_ preset: String?) {
-    guard configuration.cmake.configurePreset != preset else { return }
-    configuration.cmake.configurePreset = preset
-    if preset != nil { configuration.cmake.toolchainFile = nil }
+    guard canStartAction, configuration.cmake.configurePreset != preset else { return }
+    var cmake = configuration.cmake
+    cmake.configurePreset = preset
+    if preset != nil { cmake.toolchainFile = nil }
+    configuration.cmake = cmake
+    invalidateTargets()
+  }
+
+  private func invalidateTargets() {
+    configuration.cmake.target = nil
     targets = []
     buildGenerator = nil
     buildToolsDescription = nil
+    scheduleTargetDiscovery(chooseDefaultPreset: false)
   }
 
   func chooseFirmware() {
@@ -935,14 +967,25 @@ final class Workspace {
     switch action {
     case .installCube, .installBundle, .prepareAllTools:
       guard !loadingCube else { return }
+    case .build:
+      guard canBuildProject else { return }
     case .run, .flash:
+      if case .run = action, !canRunProject { return }
       if configuration.flash == .uart, let issue = flashSerialOccupancyIssue {
         reportError(issue)
         return
       }
-    default:
-      break
+    case .inspect, .reconfigure:
+      guard canConfigureProject else { return }
+    case .cleanProjectCache:
+      guard project != nil else { return }
     }
+    let shouldResumeDiscovery: Bool
+    switch action {
+    case .flash: shouldResumeDiscovery = discoveringTargets
+    default: shouldResumeDiscovery = isTool
+    }
+    let discovery = cancelTargetDiscovery()
     let reading = chipTask
     reading?.cancel()
     if isTool {
@@ -969,7 +1012,7 @@ final class Workspace {
       let all = Set(CubeCLI.defaultBuildNames + [CubeCLI.programmerBundleName])
       toolActivity = .preparingAll(
         includesCube: cubeVersion == nil, bundles: missing.isEmpty ? all : missing)
-    case .inspect, .build, .run, .flash:
+    case .inspect, .reconfigure, .cleanProjectCache, .build, .run, .flash:
       showProjectArea()
       revealConsoleOutput(.buildLog)
     }
@@ -991,8 +1034,10 @@ final class Workspace {
         lastBuildDuration = startedAt.duration(to: .now)
         operation = nil
         scheduleChipRead()
+        if shouldResumeDiscovery, targets.isEmpty { scheduleTargetDiscovery() }
       }
       do {
+        await discovery?.value
         await reading?.value
         try Task.checkCancellation()
         try await perform(action, token: token)
@@ -1228,8 +1273,7 @@ final class Workspace {
     ) { directory in
       self.toolDirectory = directory
       self.preferences.set(directory.path, forKey: "toolDirectory")
-      self.buildGenerator = nil
-      self.buildToolsDescription = nil
+      self.invalidateToolchainSelection()
       await self.refreshCube()
     }
   }
@@ -1238,9 +1282,15 @@ final class Workspace {
     guard canStartAction, !loadingCube else { return }
     toolDirectory = CubeInstallation.defaultDirectory
     preferences.removeObject(forKey: "toolDirectory")
+    invalidateToolchainSelection()
+    Task { await refreshCube() }
+  }
+
+  private func invalidateToolchainSelection() {
+    _ = cancelTargetDiscovery()
+    targets = []
     buildGenerator = nil
     buildToolsDescription = nil
-    Task { await refreshCube() }
   }
 
   private func refreshCube() async {
@@ -1256,6 +1306,7 @@ final class Workspace {
       if cubeRefreshID == token {
         loadingCube = false
         hasCheckedCube = true
+        if targets.isEmpty { scheduleTargetDiscovery() }
       }
     }
     if let cli = CubeInstallation(directory: directory).cli {
@@ -1415,16 +1466,23 @@ final class Workspace {
     return total
   }
 
-  func clearBuildCache() {
+  func clearBuildCache() async {
     guard canStartAction else { return }
-    let cache = CMakeBuild.defaultCache
+    let discovery = cancelTargetDiscovery()
+    running = true
+    defer {
+      running = false
+      scheduleChipRead()
+    }
+    await discovery?.value
     do {
-      if FileManager.default.fileExists(atPath: cache.path) {
-        try FileManager.default.removeItem(at: cache)
-      }
-      lastArtifact = nil
-      clearArtifactDetails()
-      lastFirmwareUsage = nil
+      try await Task.detached(priority: .userInitiated) {
+        let cache = CMakeBuild.defaultCache
+        if FileManager.default.fileExists(atPath: cache.path) {
+          try FileManager.default.removeItem(at: cache)
+        }
+      }.value
+      receive(.clearArtifact)
       flashNotice(l10n.tr(.init("notice.clearedBuildCache", defaultValue: "Build cache cleared")))
     } catch {
       reportError(error.localizedDescription)
@@ -1554,6 +1612,22 @@ final class Workspace {
         .flash(file, address: address, standalone: standalone), token: token)
     case .inspect:
       try await performWorkflow(.inspect, token: token)
+    case .reconfigure:
+      try await performWorkflow(.reconfigure, token: token)
+    case .cleanProjectCache:
+      guard let project else { return }
+      if standaloneImage == nil { receive(.clearArtifact) }
+      buildGenerator = nil
+      buildToolsDescription = nil
+      let cleanup = Task.detached(priority: .userInitiated) {
+        try CMakeBuild().cleanCache(for: project)
+      }
+      try await withTaskCancellationHandler {
+        try await cleanup.value
+      } onCancel: {
+        cleanup.cancel()
+      }
+      statusState = .projectCacheCleared
     case .build:
       try await performWorkflow(.build, token: token)
     case .run:
@@ -1680,6 +1754,93 @@ final class Workspace {
     }
   }
 
+  private func defaultConfiguration() -> ProjectConfiguration {
+    var defaults = ProjectConfiguration()
+    defaults.flash = defaultFlashMethod
+    defaults.serial.baud = defaultBaudRate
+    return defaults
+  }
+
+  private func saveSerialSelection(_ path: String?, key: String) {
+    guard !restoringProjectPreferences else { return }
+    if project != nil {
+      saveProjectPreferences()
+    } else {
+      preferences.set(path, forKey: key)
+    }
+  }
+
+  private func saveProjectPreferences() {
+    guard !restoringProjectPreferences, let project, (try? configuration.validate()) != nil
+    else { return }
+    ProjectPreferences(
+      configuration: configuration, monitorPort: serialPath, flashPort: flashSerialPath
+    ).save(for: project.path, in: preferences)
+  }
+
+  private func cancelTargetDiscovery() -> Task<Void, Never>? {
+    targetDiscoveryID = UUID()
+    targetDiscovery?.cancel()
+    discoveringTargets = false
+    return targetDiscovery
+  }
+
+  private func scheduleTargetDiscovery(chooseDefaultPreset: Bool = true) {
+    guard let project else { return }
+    let previous = cancelTargetDiscovery()
+    guard !loadingCube, !running, buildToolsIssue == nil, let cli = cubeCLI else { return }
+    let token = targetDiscoveryID
+    let options = configuration.cmake
+    discoveringTargets = true
+    targetDiscovery = Task { [weak self] in
+      guard let self else { return }
+      defer {
+        if targetDiscoveryID == token {
+          targetDiscovery = nil
+          discoveringTargets = false
+        }
+      }
+      await previous?.value
+      do {
+        try Task.checkCancellation()
+        let builder = CMakeBuild()
+        let names = CMakeBuild.sortedPresets(try await builder.presets(in: project, cli: cli))
+        var current = options
+        if current.toolchainFile == nil {
+          if let preset = current.configurePreset, !names.contains(preset) {
+            current.configurePreset = names.first
+          } else if current.configurePreset == nil && chooseDefaultPreset {
+            current.configurePreset = names.first
+          }
+        }
+        guard targetDiscoveryID == token else { return }
+        presets = names
+        configuration.cmake.configurePreset = current.configurePreset
+        guard current.configurePreset != nil || current.toolchainFile != nil else {
+          receive(.targets([], selected: nil))
+          return
+        }
+        let selection = try await builder.configure(
+          project: project, options: current, cli: cli, preferCached: true)
+        guard targetDiscoveryID == token, !Task.isCancelled else { return }
+        let selected = configuration.cmake.target.flatMap {
+          selection.targets.contains($0) ? $0 : nil
+        }
+        receive(
+          .configuredBuild(
+            generator: selection.generator, toolsDescription: selection.toolsDescription))
+        receive(
+          .targets(
+            selection.targets,
+            selected: selection.targets.count == 1 ? selection.targets.first : selected))
+      } catch is CancellationError {
+      } catch {
+        guard targetDiscoveryID == token else { return }
+        receive(.targets([], selected: nil))
+      }
+    }
+  }
+
   private func proposedPresets(in project: URL) -> [String] {
     struct File: Decodable {
       struct Entry: Decodable {
@@ -1802,6 +1963,7 @@ extension Workspace: STM32Workflow.Interaction {
       lastArtifact = nil
       clearArtifactDetails()
       lastFirmwareUsage = nil
+      standaloneImage = nil
     case .toolsReady:
       break
     case .stage(let stage):

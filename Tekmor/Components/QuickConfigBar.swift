@@ -175,7 +175,11 @@ struct TargetInlineMenu: View {
     let missing = workspace.configuration.cmake.target == nil
     Menu {
       if workspace.targets.isEmpty {
-        Text(l10n.tr(.init("quickbar.target.notLoaded", defaultValue: "Targets not loaded")))
+        Text(
+          l10n.tr(
+            workspace.discoveringTargets
+              ? .init("quickbar.target.discovering", defaultValue: "Discovering targets…")
+              : .init("quickbar.target.notLoaded", defaultValue: "Targets not loaded")))
       } else {
         Picker(
           l10n.tr(.init("quickbar.target.picker", defaultValue: "Firmware Target")),
@@ -199,7 +203,7 @@ struct TargetInlineMenu: View {
           l10n.tr(.init("quickbar.target.reload", defaultValue: "Reload Executable Targets")),
           systemImage: "arrow.clockwise")
       }
-      .disabled(workspace.buildToolsIssue != nil)
+      .disabled(!workspace.canConfigureProject)
 
       if workspace.buildToolsIssue != nil {
         Button {

@@ -839,6 +839,57 @@ private func addMockProgrammer(in directory: URL, to listingData: Data) throws -
 }
 
 @MainActor
+@Test func multipleCMakeTargetsRequireOrPreserveAnExplicitSelection() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  try Data().write(to: fixture.project.appendingPathComponent("multiple-targets"))
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  let initial = try await fixture.workflow.execute(
+    .inspect, context: fixture.context(), interaction: host)
+  #expect(initial == .inspected(2))
+  #expect(host.targets == ["Blink", "Other"])
+  #expect(host.selectedTarget == nil)
+
+  var configuration = ProjectConfiguration()
+  configuration.cmake.target = "Other"
+  let context = STM32Workflow.Context(
+    project: fixture.project, configuration: configuration, cube: fixture.cube)
+  _ = try await fixture.workflow.execute(.inspect, context: context, interaction: host)
+  #expect(host.selectedTarget == "Other")
+}
+
+@MainActor
+@Test func cachedSelectionReusesCMakeReplyAndCleanupIsScopedToProject() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let other = try WorkflowFixture()
+  defer { other.remove() }
+  let maker = CMakeBuild(cache: fixture.project.appendingPathComponent("cache"))
+  let options = CMakeSettings(configurePreset: "Debug")
+  let initial = try await maker.configure(
+    project: fixture.project, options: options, cli: fixture.cube)
+  let originalOwner = initial.directory.appendingPathComponent(".tekmor-project")
+  try FileManager.default.removeItem(at: originalOwner)
+  let existingCache = initial.directory.appendingPathComponent("CMakeCache.txt")
+  try "CMAKE_HOME_DIRECTORY:INTERNAL=\(fixture.project.resolvingSymlinksInPath().path)\n".write(
+    to: existingCache, atomically: true, encoding: .utf8)
+  let attempts = try fixture.commands().split(separator: "\n").filter { $0.contains(" -B ") }
+  let cached = try await maker.configure(
+    project: fixture.project, options: options, cli: fixture.cube, preferCached: true)
+  #expect(cached.directory == initial.directory)
+  #expect(cached.targets == ["Blink"])
+  #expect(try fixture.commands().split(separator: "\n").filter { $0.contains(" -B ") } == attempts)
+  let fresh = try await maker.configure(
+    project: fixture.project, options: options, cli: fixture.cube, fresh: true)
+  #expect(fresh.directory == initial.directory)
+  #expect((try fixture.commands()).contains("cmake --fresh "))
+  let another = try await maker.configure(project: other.project, options: options, cli: other.cube)
+  try maker.cleanCache(for: fixture.project)
+  #expect(!FileManager.default.fileExists(atPath: initial.directory.path))
+  #expect(FileManager.default.fileExists(atPath: another.directory.path))
+}
+
+@MainActor
 @Test func workflowStopsAfterTimedOutWriteEvenWhenFirmwareWasVerified() async throws {
   let fixture = try WorkflowFixture()
   defer { fixture.remove() }
@@ -957,7 +1008,11 @@ private struct WorkflowFixture {
                 /bin/mkdir -p "$reply"
                 printf '%s' '{"cmake":{"generator":{"name":"Ninja"}},"reply":{"codemodel-v2":{"jsonFile":"model.json"},"toolchains-v1":{"jsonFile":"toolchains.json"}}}' > "$reply/index-test.json"
                 printf '{"toolchains":[{"language":"C","compiler":{"path":"%s"}}]}\n' "$ARM_GNU_GCC" > "$reply/toolchains.json"
-                printf '%s' '{"configurations":[{"targets":[{"name":"Blink","jsonFile":"target.json"}]}]}' > "$reply/model.json"
+                if [ -f "$root/multiple-targets" ]; then
+                    printf '%s' '{"configurations":[{"targets":[{"name":"Blink","jsonFile":"target.json"},{"name":"Other","jsonFile":"target.json"}]}]}' > "$reply/model.json"
+                else
+                    printf '%s' '{"configurations":[{"targets":[{"name":"Blink","jsonFile":"target.json"}]}]}' > "$reply/model.json"
+                fi
                 printf '%s' '{"type":"EXECUTABLE","artifacts":[{"path":"Blink.elf"}]}' > "$reply/target.json" ;;
             'programmer '*--upload*)
                 for output do :; done

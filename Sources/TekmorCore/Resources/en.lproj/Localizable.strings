@@ -106,3 +106,4 @@
 "core.hardware.serialSendFailed" = "Could not finish sending to %@. Some bytes may have been sent.";
 "core.serial.invalidPayloadSize" = "Enter a command of 1 to 65536 bytes, including its line ending.";
 "core.serial.invalidHEX" = "Enter complete HEX byte pairs, for example 01 02 FF.";
+"core.cmake.invalidCacheDirectory" = "Tekmor's build cache directory is invalid.";
