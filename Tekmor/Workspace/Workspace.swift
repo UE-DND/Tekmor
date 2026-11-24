@@ -849,12 +849,31 @@ final class Workspace {
     panel.message = l10n.tr(
       .init("panel.chooseFirmware", defaultValue: "Select an ELF, Intel HEX, or BIN firmware file"))
     chooseFile(using: panel) { url in
-      if url.pathExtension.lowercased() == "bin" {
-        self.hardwareConfirmation = HardwareConfirmation(
-          action: .flash(url), connection: self.currentTarget)
-      } else {
-        self.start(.flash(url, address: nil, standalone: true))
-      }
+      self.openFirmware(url, confirm: false)
+    }
+  }
+
+  func acceptDrop(_ urls: [URL]) -> Bool {
+    guard canStartAction, urls.count == 1, let url = urls.first, url.isFileURL,
+      let type = try? url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
+    else { return false }
+    if type.isDirectory == true {
+      open(url)
+      return true
+    }
+    guard type.isRegularFile == true,
+      ["elf", "axf", "out", "hex", "bin"].contains(url.pathExtension.lowercased())
+    else { return false }
+    openFirmware(url, confirm: true)
+    return true
+  }
+
+  private func openFirmware(_ file: URL, confirm: Bool) {
+    guard canStartAction else { return }
+    if confirm || file.pathExtension.lowercased() == "bin" {
+      hardwareConfirmation = HardwareConfirmation(action: .flash(file), connection: currentTarget)
+    } else {
+      start(.flash(file, address: nil, standalone: true))
     }
   }
 

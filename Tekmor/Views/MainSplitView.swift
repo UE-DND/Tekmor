@@ -19,6 +19,9 @@ struct MainSplitView: View {
           contextualToolbarItems
         }
       }
+      .dropDestination(for: URL.self) { urls, _ in
+        workspace.acceptDrop(urls)
+      }
       .sheet(item: $workspace.hardwareConfirmation) { confirmation in
         HardwareConfirmationSheet(workspace: workspace, confirmation: confirmation)
       }
