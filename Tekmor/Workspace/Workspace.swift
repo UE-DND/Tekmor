@@ -85,6 +85,36 @@ final class Workspace {
     }
   }
 
+  enum ExternalEditor: String, CaseIterable, Identifiable {
+    case systemDefault
+    case vsCode
+    case cursor
+    case zed
+    case xcode
+
+    var id: Self { self }
+
+    func title(using l10n: AppL10n) -> String {
+      switch self {
+      case .systemDefault:
+        l10n.tr(.init("settings.editor.systemDefault", defaultValue: "System Default"))
+      case .vsCode: "Visual Studio Code"
+      case .cursor: "Cursor"
+      case .zed: "Zed"
+      case .xcode: "Xcode"
+      }
+    }
+
+    var urlScheme: String? {
+      switch self {
+      case .vsCode: "vscode"
+      case .cursor: "cursor"
+      case .zed: "zed"
+      case .systemDefault, .xcode: nil
+      }
+    }
+  }
+
   enum WorkspaceStatus: Equatable {
     case ready
     case preparing
@@ -248,6 +278,9 @@ final class Workspace {
   var defaultBaudRate: Int {
     didSet { preferences.set(defaultBaudRate, forKey: "defaultBaudRate") }
   }
+  var externalEditor: ExternalEditor {
+    didSet { preferences.set(externalEditor.rawValue, forKey: "externalEditor") }
+  }
 
   // MARK: - Project & Hardware State
   private(set) var project: URL?
@@ -375,6 +408,9 @@ final class Workspace {
     let storedBaud = defaults.integer(forKey: "defaultBaudRate")
     let initialBaud = SerialSettings.baudRates.contains(storedBaud) ? storedBaud : 115200
     defaultBaudRate = initialBaud
+    externalEditor =
+      defaults.string(forKey: "externalEditor").flatMap(ExternalEditor.init(rawValue:))
+      ?? .systemDefault
 
     toolDirectory =
       defaults.string(forKey: "toolDirectory")
@@ -1240,6 +1276,63 @@ final class Workspace {
     } else {
       NSWorkspace.shared.open(url.deletingLastPathComponent())
     }
+  }
+
+  func resolveSourceLocation(_ location: BuildDiagnosticLocation) -> URL? {
+    location.resolveURL(relativeTo: project)
+  }
+
+  func openSourceLocation(_ location: BuildDiagnosticLocation) {
+    guard let fileURL = resolveSourceLocation(location) else { return }
+
+    if let scheme = externalEditor.urlScheme {
+      var components = URLComponents()
+      components.scheme = scheme
+      components.host = "file"
+      let suffix = location.column.map { ":\(location.line):\($0)" } ?? ":\(location.line)"
+      components.path = fileURL.path + suffix
+      if let editorURL = components.url,
+        NSWorkspace.shared.urlForApplication(toOpen: editorURL) != nil,
+        NSWorkspace.shared.open(editorURL)
+      {
+        return
+      }
+    } else if externalEditor == .xcode {
+      let process = Process()
+      process.executableURL = URL(filePath: "/usr/bin/xed")
+      process.arguments = ["--line", "\(location.line)", fileURL.path]
+      process.terminationHandler = { process in
+        guard process.terminationStatus != 0 else { return }
+        Task { @MainActor in Self.openSourceFileWithDefaultEditor(fileURL) }
+      }
+      if (try? process.run()) != nil {
+        return
+      }
+    }
+
+    Self.openSourceFileWithDefaultEditor(fileURL)
+  }
+
+  private static func openSourceFileWithDefaultEditor(_ fileURL: URL) {
+    let resolved = fileURL.resolvingSymlinksInPath()
+    let values = try? resolved.resourceValues(forKeys: [.contentTypeKey, .isExecutableKey])
+    let type = values?.contentType
+    let workspace = NSWorkspace.shared
+    // Keep executable scripts and other launchable files in a text editor.
+    if type?.conforms(to: .plainText) == true,
+      type?.conforms(to: .shellScript) == false,
+      values?.isExecutable == false
+    {
+      workspace.open(resolved)
+    } else if let editor = workspace.urlForApplication(withBundleIdentifier: "com.apple.TextEdit") {
+      workspace.open(
+        [resolved], withApplicationAt: editor, configuration: .init(), completionHandler: nil)
+    }
+  }
+
+  func revealSourceLocation(_ location: BuildDiagnosticLocation) {
+    guard let fileURL = resolveSourceLocation(location) else { return }
+    revealInFinder(fileURL)
   }
 
   func revealCubeDirectory() {

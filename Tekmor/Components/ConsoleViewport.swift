@@ -25,6 +25,9 @@ struct ConsoleViewport: View {
   var emptyAction: (() -> Void)? = nil
   var onCopyAll: () -> Void
   var onCopyLine: (String) -> Void
+  var onResolveLocation: ((String) -> BuildDiagnosticLocation?)? = nil
+  var onOpenLocation: ((BuildDiagnosticLocation) -> Void)? = nil
+  var onRevealLocation: ((BuildDiagnosticLocation) -> Void)? = nil
   @Environment(\.l10n) private var l10n
   @State private var viewportSize: CGSize = .zero
 
@@ -153,6 +156,9 @@ struct ConsoleViewport: View {
       case .normal: TekmorColor.textPrimary
       }
 
+    let location: BuildDiagnosticLocation? =
+      mode == .buildLog ? onResolveLocation?(line.text) : nil
+
     return HStack(alignment: .firstTextBaseline, spacing: 10) {
       if let severity = severityLabel(for: line.kind) {
         Label(severity.title, systemImage: severity.symbol)
@@ -180,11 +186,49 @@ struct ConsoleViewport: View {
       .foregroundStyle(textColor)
       .textSelection(.enabled)
       .frame(maxWidth: .infinity, alignment: .leading)
+      if let location, let onOpenLocation {
+        Button {
+          onOpenLocation(location)
+        } label: {
+          HStack(spacing: 3) {
+            Text(location.displayLabel)
+              .font(.system(size: max(10.5, fontSize - 1.5), weight: .medium, design: .monospaced))
+            Image(systemName: "arrow.up.forward")
+              .font(.system(size: max(9, fontSize - 3), weight: .semibold))
+          }
+        }
+        .buttonStyle(TekmorFlatActionButtonStyle(tint: textColor, compact: true))
+        .fixedSize()
+        .help(
+          l10n.tr(
+            .init(
+              "help.openSourceLocation",
+              defaultValue: "Open \(location.displayLabel) in editor")))
+      }
     }
     .padding(.horizontal, 6)
     .padding(.vertical, 1.5)
     .background(rowBackground, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
     .contextMenu {
+      if let location {
+        if let onOpenLocation {
+          Button(
+            l10n.tr(
+              .init("console.openSourceLocation", defaultValue: "Open \(location.displayLabel)"))
+          ) {
+            onOpenLocation(location)
+          }
+        }
+        if let onRevealLocation {
+          Button(
+            l10n.tr(
+              .init("console.revealSourceFile", defaultValue: "Reveal Source File in Finder"))
+          ) {
+            onRevealLocation(location)
+          }
+        }
+        Divider()
+      }
       Button(l10n.tr(.init("console.copyLine", defaultValue: "Copy Line"))) {
         onCopyLine(line.text)
       }

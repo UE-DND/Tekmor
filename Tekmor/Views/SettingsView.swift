@@ -140,10 +140,18 @@ private struct GeneralSettingsTab: View {
             Text("\(rate) bps").tag(rate)
           }
         }
+        Picker(
+          l10n.tr(.init("settings.externalEditor", defaultValue: "External Editor")),
+          selection: $workspace.externalEditor
+        ) {
+          ForEach(Workspace.ExternalEditor.allCases) { editor in
+            Text(editor.title(using: l10n)).tag(editor)
+          }
+        }
       }
     }
     .formStyle(.grouped)
-    .frame(height: 480)
+    .frame(height: 510)
   }
 }
 

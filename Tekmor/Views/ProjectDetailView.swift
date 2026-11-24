@@ -629,7 +629,15 @@ private struct ProjectOutputPane: View {
       onCopyLine: {
         workspace.copyText(
           $0, label: l10n.tr(.init("notice.copiedLogLine", defaultValue: "Log line copied")))
-      }
+      },
+      onResolveLocation: { line in
+        guard let location = BuildDiagnosticLocation.parse(from: line),
+          workspace.resolveSourceLocation(location) != nil
+        else { return nil }
+        return location
+      },
+      onOpenLocation: workspace.openSourceLocation,
+      onRevealLocation: workspace.revealSourceLocation
     )
   }
 
