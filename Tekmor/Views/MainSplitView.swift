@@ -1,7 +1,8 @@
+import AppKit
 import SwiftUI
 import TekmorCore
 
-/// The workspace window's navigation, inspector, toolbar, and status bar.
+/// The workspace window's navigation, toolbar, and status bar.
 struct MainSplitView: View {
   @Bindable var workspace: Workspace
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -9,57 +10,58 @@ struct MainSplitView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    // Reserve space for the status bar in the frame proposed to the AppKit-backed panes.
-    VStack(spacing: 0) {
-      workspaceSplit
-        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-      HairlineDivider()
-      StatusBarView(workspace: workspace)
-        .environment(\.workbenchTextScale, CGFloat(workspace.workbenchTextScale))
-    }
-    .navigationTitle(windowTitle)
-    .navigationSubtitle(windowSubtitle)
-    .tint(TekmorColor.brand)
-    .toolbar {
-      ToolbarItemGroup(placement: .primaryAction) {
-        contextualToolbarItems
+    workspaceSplit
+      .navigationTitle(windowTitle)
+      .navigationSubtitle(windowSubtitle)
+      .tint(TekmorColor.brand)
+      .toolbar {
+        ToolbarItemGroup(placement: .primaryAction) {
+          contextualToolbarItems
+        }
       }
-    }
-    .sheet(
-      isPresented: Binding(
-        get: { workspace.binaryFirmware != nil },
-        set: { if !$0 { workspace.binaryFirmware = nil } }
-      )
-    ) {
-      BinaryFlashSheet(workspace: workspace)
-    }
-    .sheet(isPresented: $workspace.showingToolLog) {
-      ToolLogSheet(workspace: workspace)
-    }
+      .sheet(
+        isPresented: Binding(
+          get: { workspace.binaryFirmware != nil },
+          set: { if !$0 { workspace.binaryFirmware = nil } }
+        )
+      ) {
+        BinaryFlashSheet(workspace: workspace)
+      }
+      .sheet(isPresented: $workspace.showingToolLog) {
+        ToolLogSheet(workspace: workspace)
+      }
   }
 
   private var workspaceSplit: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
       SidebarView(workspace: workspace)
-        .navigationSplitViewColumnWidth(min: 192, ideal: 244, max: 320)
-    } detail: {
-      ZStack(alignment: .bottomTrailing) {
-        detailContent
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-        if let notice = workspace.copiedNotice {
-          toastNotice(notice)
-            .padding(14)
-            .transition(reduceMotion ? .identity : .move(edge: .bottom).combined(with: .opacity))
+        .background {
+          SidebarCollapseBehavior()
+            .allowsHitTesting(false)
         }
+        .navigationSplitViewColumnWidth(min: 204, ideal: 260, max: 340)
+    } detail: {
+      // Reserve space for the status bar in the frame proposed to the AppKit-backed panes.
+      VStack(spacing: 0) {
+        ZStack(alignment: .bottomTrailing) {
+          detailContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+          if let notice = workspace.copiedNotice {
+            toastNotice(notice)
+              .padding(14)
+              .transition(reduceMotion ? .identity : .move(edge: .bottom).combined(with: .opacity))
+          }
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: workspace.copiedNotice)
+
+        HairlineDivider()
+        StatusBarView(workspace: workspace)
+          .environment(\.workbenchTextScale, CGFloat(workspace.workbenchTextScale))
       }
-      .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: workspace.copiedNotice)
     }
     .navigationSplitViewStyle(.balanced)
-    .inspector(isPresented: inspectorPresentedBinding) {
-      ProjectInspectorView(workspace: workspace)
-        .inspectorColumnWidth(min: 252, ideal: 276, max: 320)
-    }
   }
 
   // MARK: - Native Window Title & Contextual Toolbar
@@ -324,18 +326,44 @@ struct MainSplitView: View {
         .strokeBorder(TekmorColor.separatorStrong, lineWidth: 1)
     )
   }
+}
 
-  private var inspectorPresentedBinding: Binding<Bool> {
-    Binding(
-      get: {
-        workspace.canArrangeConsole && workspace.showInspector
-      },
-      set: { newValue in
-        if workspace.canArrangeConsole {
-          workspace.showInspector = newValue
-        }
-      }
-    )
+private struct SidebarCollapseBehavior: NSViewRepresentable {
+  func makeNSView(context: Context) -> SplitAttachment {
+    SplitAttachment()
   }
 
+  func updateNSView(_ view: SplitAttachment, context: Context) {
+    view.applyCollapseBehavior()
+  }
+
+  final class SplitAttachment: NSView {
+    override func viewDidMoveToWindow() {
+      super.viewDidMoveToWindow()
+      applyCollapseBehavior()
+    }
+
+    override func viewDidMoveToSuperview() {
+      super.viewDidMoveToSuperview()
+      applyCollapseBehavior()
+    }
+
+    func applyCollapseBehavior() {
+      var ancestor = window == nil ? nil : superview
+      while let view = ancestor {
+        if let splitView = view as? NSSplitView,
+          let controller = splitView.delegate as? NSSplitViewController,
+          let sidebarItem = controller.splitViewItems.first(where: { $0.behavior == .sidebar })
+        {
+          // Keep detail pane width pinned to the window while expanding the sidebar,
+          // avoiding frame-by-frame layout thrash and toolbar overflow clipping.
+          if sidebarItem.collapseBehavior != .useConstraints {
+            sidebarItem.collapseBehavior = .useConstraints
+          }
+          return
+        }
+        ancestor = view.superview
+      }
+    }
+  }
 }

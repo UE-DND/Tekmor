@@ -826,22 +826,6 @@
         }
       }
     },
-    "action.settings" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "设置"
-          }
-        }
-      }
-    },
     "action.showInspector" : {
       "localizations" : {
         "en" : {
@@ -2376,22 +2360,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择监听串口"
-          }
-        }
-      }
-    },
-    "help.settings" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings (⌘,)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "设置 (⌘,)"
           }
         }
       }

@@ -114,6 +114,7 @@ private struct WorkbenchGroupView<HeaderAccessory: View, Content: View>: View {
           workspace: workspace, group: group, size: geometry.size,
           tabFrames: tabFrames, tabHeight: tabHeight, preview: $preview)
       ) {
+        let isActiveGroup = group.selected == workspace.activePane
         VStack(spacing: 0) {
           HStack(spacing: 6) {
             ViewThatFits(in: .horizontal) {
@@ -135,9 +136,10 @@ private struct WorkbenchGroupView<HeaderAccessory: View, Content: View>: View {
               layoutMenu
                 .layoutPriority(1)
             }
+            .opacity(!workspace.isSplitConsole || isActiveGroup ? 1 : 0.78)
           }
-          .padding(.leading, 8)
-          .padding(.trailing, 6)
+          .padding(.leading, 10)
+          .padding(.trailing, 8)
           .frame(height: tabHeight)
           .background(TekmorColor.workspaceBackground)
           .overlay(alignment: .bottom) { HairlineDivider(subtle: true) }
@@ -173,6 +175,7 @@ private struct WorkbenchGroupView<HeaderAccessory: View, Content: View>: View {
       title: title,
       selected: selected,
       isFocusedPane: isFocusedPane,
+      showsFocusUnderline: workspace.isSplitConsole && selected && isFocusedPane,
       showsListeningDot: pane == .serial && workspace.serialConnected,
       issueCount: pane == .buildLog && !selected ? workspace.output.logIssueCount : 0,
       tabHeight: tabHeight,
@@ -317,6 +320,7 @@ private struct WorkbenchTabButton: View {
   let title: String
   let selected: Bool
   let isFocusedPane: Bool
+  let showsFocusUnderline: Bool
   let showsListeningDot: Bool
   let issueCount: Int
   let tabHeight: CGFloat
@@ -352,6 +356,14 @@ private struct WorkbenchTabButton: View {
         in: RoundedRectangle(cornerRadius: TekmorRadius.control, style: .continuous)
       )
       .frame(height: tabHeight)
+      .overlay(alignment: .bottom) {
+        if showsFocusUnderline {
+          Capsule()
+            .fill(TekmorColor.brand)
+            .frame(height: 1.5)
+            .padding(.horizontal, 6)
+        }
+      }
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)

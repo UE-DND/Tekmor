@@ -1,8 +1,8 @@
 import SwiftUI
 import TekmorCore
 
-/// Single full-window 28pt bottom status bar — the sole source of truth for global workspace status,
-/// active console metrics/follow control, and the global Settings trigger.
+/// Detail-pane 28pt bottom status bar — the sole source of truth for global workspace status
+/// and active console metrics/follow control.
 struct StatusBarView: View {
   @Bindable var workspace: Workspace
   @State private var showingErrorDetail = false
@@ -13,21 +13,15 @@ struct StatusBarView: View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 10) {
         statusSummary(maxErrorWidth: workspace.canUseOutputCommands ? 420 : 680)
-        Spacer(minLength: 8)
         if workspace.canUseOutputCommands {
+          Spacer(minLength: 8)
           outputMetrics
           followOutput
-          VerticalHairline(height: 12)
         }
-        settingsLink
       }
 
       VStack(alignment: .leading, spacing: 4) {
-        HStack {
-          statusSummary(maxErrorWidth: nil)
-          Spacer(minLength: 8)
-          settingsLink
-        }
+        statusSummary(maxErrorWidth: nil)
         if workspace.canUseOutputCommands {
           ViewThatFits(in: .horizontal) {
             HStack {
@@ -46,7 +40,7 @@ struct StatusBarView: View {
     .fixedSize(horizontal: false, vertical: true)
     .padding(.horizontal, 12)
     .padding(.vertical, 3)
-    .frame(minHeight: 28)
+    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
     .background(TekmorColor.chromeBackground)
     .onChange(of: workspace.errorMessage) {
       if workspace.errorMessage == nil {
@@ -233,15 +227,6 @@ struct StatusBarView: View {
     case nil:
       break
     }
-  }
-
-  private var settingsLink: some View {
-    SettingsLink {
-      Label(l10n.tr(.init("action.settings", defaultValue: "Settings")), systemImage: "gearshape")
-        .labelStyle(.iconOnly)
-    }
-    .buttonStyle(TekmorIconButtonStyle())
-    .help(l10n.tr(.init("help.settings", defaultValue: "Settings (⌘,)")))
   }
 
   private var statusLeading: some View {

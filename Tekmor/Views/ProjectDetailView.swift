@@ -4,24 +4,115 @@ import TekmorCore
 
 /// Project controls and the dockable workbench.
 struct ProjectDetailView: View {
+  private static let minInspectorWidth: CGFloat = 252
+  private static let idealInspectorWidth: CGFloat = 276
+  private static let maxInspectorWidth: CGFloat = 320
+  private static let minWorkbenchWidth: CGFloat = 240
+
   @Bindable var workspace: Workspace
+  @State private var inspectorWidth: CGFloat = idealInspectorWidth
+  @State private var inspectorDragStartWidth: CGFloat?
   @Environment(\.l10n) private var l10n
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  private var showsInspector: Bool {
+    workspace.canArrangeConsole && workspace.showInspector
+  }
 
   var body: some View {
     GeometryReader { geometry in
       VStack(spacing: 0) {
         QuickConfigBar(workspace: workspace) { contextBarTrailing }
-        if workspace.hasConsoleContent {
-          consoleContent
-        } else {
-          emptyState
-        }
+        workbenchArea
       }
       .frame(width: geometry.size.width, height: geometry.size.height)
     }
     .environment(\.workbenchTextScale, CGFloat(workspace.workbenchTextScale))
     .background(TekmorColor.workspaceBackground)
+  }
+
+  private var workbenchArea: some View {
+    GeometryReader { geometry in
+      let resolvedInspectorWidth = clampedInspectorWidth(for: geometry.size.width)
+      let visibleInspectorWidth = showsInspector ? resolvedInspectorWidth + 1 : 0
+      let contentWidth = max(0, geometry.size.width - visibleInspectorWidth)
+
+      ZStack(alignment: .leading) {
+        HStack(spacing: 0) {
+          Group {
+            if workspace.hasConsoleContent {
+              consoleContent
+            } else {
+              emptyState
+            }
+          }
+          .frame(width: contentWidth, height: geometry.size.height)
+
+          HStack(spacing: 0) {
+            Rectangle()
+              .fill(TekmorColor.separator)
+              .frame(width: 1, height: geometry.size.height)
+            ProjectInspectorView(workspace: workspace)
+              .frame(width: resolvedInspectorWidth, height: geometry.size.height)
+          }
+          .frame(width: visibleInspectorWidth, height: geometry.size.height, alignment: .leading)
+          .clipped()
+          .disabled(!showsInspector)
+          .allowsHitTesting(showsInspector)
+          .accessibilityHidden(!showsInspector)
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+
+        if showsInspector {
+          inspectorResizeHandle(
+            availableWidth: geometry.size.width,
+            height: geometry.size.height
+          )
+          .offset(x: max(0, contentWidth - 3))
+        }
+      }
+      .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: showsInspector)
+    }
+  }
+
+  private func inspectorResizeHandle(availableWidth: CGFloat, height: CGFloat) -> some View {
+    let upper = maxInspectorWidth(for: availableWidth)
+    let lower = min(Self.minInspectorWidth, upper)
+
+    return Color.clear
+      .frame(width: 7, height: height)
+      .contentShape(Rectangle())
+      .pointerStyle(.columnResize)
+      .gesture(
+        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+          .onChanged { value in
+            let startWidth =
+              inspectorDragStartWidth ?? clampedInspectorWidth(for: availableWidth)
+            if inspectorDragStartWidth == nil {
+              inspectorDragStartWidth = startWidth
+            }
+            let proposed = startWidth - value.translation.width
+            inspectorWidth = min(max(proposed, lower), upper)
+          }
+          .onEnded { _ in
+            inspectorDragStartWidth = nil
+          }
+      )
+      .onTapGesture(count: 2) {
+        inspectorWidth = Self.idealInspectorWidth
+      }
+      .accessibilityHidden(true)
+  }
+
+  private func maxInspectorWidth(for availableWidth: CGFloat) -> CGFloat {
+    let workbenchWidth = max(Self.minWorkbenchWidth, workspace.workbench.root.minimumSize().width)
+    return min(Self.maxInspectorWidth, max(0, availableWidth - workbenchWidth - 1))
+  }
+
+  private func clampedInspectorWidth(for availableWidth: CGFloat) -> CGFloat {
+    let upper = maxInspectorWidth(for: availableWidth)
+    let lower = min(Self.minInspectorWidth, upper)
+    return min(max(inspectorWidth, lower), upper)
   }
 
   private var emptyState: some View {

@@ -46,6 +46,7 @@ enum TekmorColor {
 
   // MARK: - Flat Native Surfaces
   static let workspaceBackground = adaptive(light: 0xFFFFFF, dark: 0x232322)
+  static let configBarBackground = adaptive(light: 0xF8F9FB, dark: 0x28282A)
   static let chromeBackground = adaptive(light: 0xF5F6F8, dark: 0x2C2C2E)
   static let chromeSubtle = adaptive(light: 0xE9ECF0, dark: 0x38383A)
   static let hoverFill = adaptive(

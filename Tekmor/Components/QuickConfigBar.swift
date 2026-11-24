@@ -25,10 +25,10 @@ struct QuickConfigBar<Trailing: View>: View {
       trailing()
     }
     .fixedSize(horizontal: false, vertical: true)
-    .padding(.horizontal, 10)
-    .padding(.vertical, 2)
-    .frame(minHeight: 30)
-    .background(TekmorColor.chromeBackground)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 3)
+    .frame(minHeight: 32)
+    .background(TekmorColor.configBarBackground, ignoresSafeAreaEdges: [])
     .overlay(alignment: .bottom) { HairlineDivider() }
   }
 

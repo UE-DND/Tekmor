@@ -148,6 +148,7 @@ struct SidebarView: View {
       HStack {
         Text(folder.name)
           .lineLimit(1)
+          .truncationMode(.middle)
         Spacer(minLength: 4)
         if workspace.project?.path == folder.path {
           projectIndicator
