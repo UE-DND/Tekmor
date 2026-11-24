@@ -33,6 +33,38 @@
         }
       }
     },
+    "help.guidance.loadTargets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configure CMake and scan executable targets for this project"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配置 CMake 并扫描此项目的可执行目标"
+          }
+        }
+      }
+    },
+    "help.guidance.selectToolchain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Inspector to choose a CMake toolchain file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开右侧检查器以选择 CMake 工具链文件"
+          }
+        }
+      }
+    },
     "help.openSourceLocation" : {
       "localizations" : {
         "en" : {
@@ -77,6 +109,118 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "外部编辑器"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.connectProbe" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect ST-LINK probe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需连接 ST-LINK 调试器"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.installBuildTools" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build tools required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需安装构建工具"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.installProgrammer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Programmer tool required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需安装烧录工具"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.loadTargets" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load firmware targets"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载构建目标"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectFlashPort" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select UART flash port"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需选择烧录串口"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectTarget" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a target above"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在上方选择目标"
+          }
+        }
+      }
+    },
+    "statusBar.guidance.selectToolchain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select CMake toolchain file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需选择工具链文件"
           }
         }
       }

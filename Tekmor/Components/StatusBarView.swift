@@ -52,7 +52,11 @@ struct StatusBarView: View {
   private func statusSummary(maxErrorWidth: CGFloat?) -> some View {
     HStack(spacing: 8) {
       if workspace.running || workspace.errorMessage == nil {
-        statusLeading
+        if let guidance = projectReadinessGuidance {
+          readinessGuidanceControl(guidance)
+        } else {
+          statusLeading
+        }
       }
 
       if let error = workspace.errorMessage {
@@ -226,6 +230,127 @@ struct StatusBarView: View {
       workspace.showBuildLog()
     case nil:
       break
+    }
+  }
+
+  private struct ReadinessGuidance {
+    let text: String
+    let help: String
+    let action: (() -> Void)?
+  }
+
+  private var projectReadinessGuidance: ReadinessGuidance? {
+    guard workspace.canStartAction,
+      !workspace.loadingCube,
+      workspace.errorMessage == nil,
+      workspace.isShowingProjectArea,
+      workspace.project != nil
+    else {
+      return nil
+    }
+
+    switch workspace.statusState {
+    case .ready, .selectTarget, .loadedTargets, .toolsReady, .unavailableTools, .toolInstalled:
+      break
+    default:
+      return nil
+    }
+
+    if let issue = workspace.buildToolsIssue {
+      return ReadinessGuidance(
+        text: l10n.tr(
+          .init("statusBar.guidance.installBuildTools", defaultValue: "Build tools required")),
+        help: issue,
+        action: { workspace.selectSidebarItem(.tools) }
+      )
+    }
+
+    if workspace.configuration.cmake.configurePreset == nil
+      && workspace.configuration.cmake.toolchainFile == nil
+    {
+      return ReadinessGuidance(
+        text: l10n.tr(
+          .init("statusBar.guidance.selectToolchain", defaultValue: "Select CMake toolchain file")),
+        help: l10n.tr(
+          .init(
+            "help.guidance.selectToolchain",
+            defaultValue: "Open Inspector to choose a CMake toolchain file")),
+        action: { workspace.showInspector = true }
+      )
+    }
+
+    if workspace.configuration.cmake.target == nil {
+      if workspace.targets.isEmpty {
+        return ReadinessGuidance(
+          text: l10n.tr(
+            .init("statusBar.guidance.loadTargets", defaultValue: "Load firmware targets")),
+          help: l10n.tr(
+            .init(
+              "help.guidance.loadTargets",
+              defaultValue: "Configure CMake and scan executable targets for this project")),
+          action: { workspace.start(.inspect) }
+        )
+      }
+      return ReadinessGuidance(
+        text: l10n.tr(
+          .init("statusBar.guidance.selectTarget", defaultValue: "Select a target above")),
+        help: l10n.tr(.init("help.target", defaultValue: "Firmware build target")),
+        action: nil
+      )
+    }
+
+    if let issue = workspace.programmerIssue {
+      return ReadinessGuidance(
+        text: l10n.tr(
+          .init("statusBar.guidance.installProgrammer", defaultValue: "Programmer tool required")),
+        help: issue,
+        action: { workspace.selectSidebarItem(.tools) }
+      )
+    }
+
+    if let issue = workspace.flashHardwareIssue {
+      let text: String
+      if workspace.configuration.flash == .uart && workspace.selectedFlashSerial == nil {
+        text = l10n.tr(
+          .init("statusBar.guidance.selectFlashPort", defaultValue: "Select UART flash port"))
+      } else if workspace.configuration.flash == .swd && workspace.probes.isEmpty {
+        text = l10n.tr(
+          .init("statusBar.guidance.connectProbe", defaultValue: "Connect ST-LINK probe"))
+      } else {
+        text = issue
+      }
+      return ReadinessGuidance(
+        text: text,
+        help: issue,
+        action: { workspace.selectSidebarItem(.devices) }
+      )
+    }
+
+    return nil
+  }
+
+  @ViewBuilder
+  private func readinessGuidanceControl(_ guidance: ReadinessGuidance) -> some View {
+    if let action = guidance.action {
+      Button(action: action) {
+        HStack(spacing: 6) {
+          Circle()
+            .fill(TekmorColor.warning)
+            .frame(width: 6, height: 6)
+          Text(guidance.text)
+            .font(.system(size: 12 * textScale, weight: .medium))
+            .lineLimit(1)
+        }
+      }
+      .buttonStyle(TekmorFlatActionButtonStyle(tint: TekmorColor.warning, compact: true))
+      .help(guidance.help)
+    } else {
+      InlineStatusIndicator(
+        text: guidance.text,
+        color: TekmorColor.warning,
+        textColor: TekmorColor.warning
+      )
+      .help(guidance.help)
     }
   }
 

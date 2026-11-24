@@ -200,6 +200,16 @@ struct TargetInlineMenu: View {
           systemImage: "arrow.clockwise")
       }
       .disabled(workspace.buildToolsIssue != nil)
+
+      if workspace.buildToolsIssue != nil {
+        Button {
+          workspace.selectSidebarItem(.tools)
+        } label: {
+          Label(
+            l10n.tr(.init("action.openTools", defaultValue: "Open Tools")),
+            systemImage: "shippingbox")
+        }
+      }
     } label: {
       if inOverflow {
         Text(l10n.tr(.init("quickbar.target.picker", defaultValue: "Firmware Target")))
