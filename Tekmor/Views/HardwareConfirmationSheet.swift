@@ -5,6 +5,7 @@ struct HardwareConfirmationSheet: View {
   let workspace: Workspace
   let confirmation: Workspace.HardwareConfirmation
   @State private var address = ""
+  @State private var readAttempt = 0
   @Environment(\.l10n) private var l10n
 
   private var value: UInt64? {
@@ -38,10 +39,22 @@ struct HardwareConfirmationSheet: View {
         LabeledContent(
           l10n.tr(.init("sheet.hardware.target", defaultValue: "Target")),
           value: workspace.targetLabel(target))
-        if let chip = workspace.chipReadings[target.id]?.chip {
+        if let chip = workspace.identifiedHardwareChip {
           Text(chip.details)
             .font(.caption)
             .foregroundStyle(.secondary)
+        } else if case .failure(let error) = workspace.hardwareTargetRead {
+          Text(error.localizedDescription)
+            .foregroundStyle(.secondary)
+          Button(l10n.tr(.init("devices.action.readChip", defaultValue: "Read Chip Info"))) {
+            readAttempt += 1
+          }
+          .disabled(workspace.programmerIssue != nil)
+        } else {
+          ProgressView(
+            l10n.tr(.init("status.readingChip", defaultValue: "Reading target chip"))
+          )
+          .controlSize(.small)
         }
       } else if let issue = workspace.flashSelectionIssue {
         Text(issue).foregroundStyle(.secondary)
@@ -79,19 +92,21 @@ struct HardwareConfirmationSheet: View {
           ) {
             workspace.confirmHardwareAction(address: nil)
           }
+          .disabled(workspace.identifiedHardwareChip == nil || workspace.programmerIssue != nil)
         } else {
           Button(l10n.tr(.init("action.flashFirmware", defaultValue: "Flash Firmware"))) {
             workspace.confirmHardwareAction(address: value)
           }
           .keyboardShortcut(.defaultAction)
           .disabled(
-            confirmation.connection == nil || workspace.programmerIssue != nil
+            workspace.identifiedHardwareChip == nil || workspace.programmerIssue != nil
               || (confirmation.binary && value == nil))
         }
       }
     }
     .padding(20)
     .frame(width: 420)
+    .task(id: readAttempt) { await workspace.identifyHardwareTarget(confirmation) }
   }
 }
 

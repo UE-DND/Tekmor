@@ -848,8 +848,10 @@ private func addMockProgrammer(in directory: URL, to listingData: Data) throws -
   #expect(reset == .targetReset)
   #expect(host.steps == ["tools", "select", "read", "target reset"])
   host.steps = []
+  let chip = try await fixture.programmer.read(host.connection)
+  let confirmed = STM32Workflow.ConfirmedTarget(connection: host.connection, chip: chip)
   let erase = try await fixture.workflow.execute(
-    .eraseFlash, context: fixture.context(), interaction: host)
+    .eraseFlash, context: fixture.context(confirmedTarget: confirmed), interaction: host)
   #expect(erase == .flashErased)
   #expect(host.steps == ["tools", "select", "read", "erase", "write ended"])
   #expect(!host.writing)
@@ -859,6 +861,45 @@ private func addMockProgrammer(in directory: URL, to listingData: Data) throws -
   #expect(commands.contains(" -rst"))
   #expect(!commands.contains("cmake --build"))
   #expect(!commands.contains(" -w "))
+}
+
+@MainActor
+@Test(arguments: [false, true])
+func workflowRejectsChipChangedSinceConfirmation(erase: Bool) async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  let chip = try await fixture.programmer.identifyTarget(host.connection)
+  let confirmed = STM32Workflow.ConfirmedTarget(connection: host.connection, chip: chip)
+  try Data().write(to: fixture.project.appendingPathComponent("changed-target"))
+  let action: STM32Workflow.Action =
+    erase ? .eraseFlash : .flash(fixture.image, address: nil, standalone: true)
+
+  await #expect(throws: TekmorError.self) {
+    try await fixture.workflow.execute(
+      action, context: fixture.context(confirmedTarget: confirmed), interaction: host)
+  }
+  #expect(host.steps == ["tools", "select", "read"])
+  let commands = try fixture.commands()
+  #expect(!commands.contains(" -w "))
+  #expect(!commands.contains(" -e all"))
+}
+
+@MainActor
+@Test func confirmedUARTFlashReusesTheIdentifiedBootloaderSession() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(
+    connection: .uart(SerialDevice(id: "/dev/fake", label: "UART", registryID: 1)))
+  let chip = try await fixture.programmer.identifyTarget(host.connection)
+  let confirmed = STM32Workflow.ConfirmedTarget(connection: host.connection, chip: chip)
+  try Data().write(to: fixture.project.appendingPathComponent("uart-already-synced"))
+
+  let outcome = try await fixture.workflow.execute(
+    .flash(fixture.image, address: nil, standalone: true),
+    context: fixture.context(method: .uart, confirmedTarget: confirmed), interaction: host)
+  #expect(outcome == .flashed)
+  #expect(host.steps.last == "started")
 }
 
 @MainActor
@@ -1079,6 +1120,9 @@ private struct WorkflowFixture {
                 [ ! -f "$root/fail-start" ] || exit 8
                 printf 'Start operation achieved successfully\n' ;;
             'programmer '*)
+                if [ -f "$root/uart-already-synced" ]; then
+                    case "$*" in *'noinit=1'*) ;; *) exit 9 ;; esac
+                fi
                 if [ -f "$root/changed-target" ]; then id=0x415; else id=0x413; fi
                 printf 'Device ID: %s\nDevice name: STM32F407xx\nFlash size: 1 MBytes\n' "$id" ;;
             *) exit 4 ;;
@@ -1087,20 +1131,25 @@ private struct WorkflowFixture {
   }
 
   var workflow: STM32Workflow {
-    let probe = probe
-    return STM32Workflow(builder: CMakeBuild(cache: project.appendingPathComponent("cache"))) {
-      cli in
-      CubeProgrammer(
-        cli: cli, isPresent: { _ in true }, probes: { [probe] },
-        deadline: { _, _ in .milliseconds(500) })
+    STM32Workflow(builder: CMakeBuild(cache: project.appendingPathComponent("cache"))) {
+      [programmer] _ in programmer
     }
   }
 
-  func context(method: FlashMethod = .swd) -> STM32Workflow.Context {
+  var programmer: CubeProgrammer {
+    let probe = probe
+    return CubeProgrammer(
+      cli: cube, isPresent: { _ in true }, probes: { [probe] },
+      deadline: { _, _ in .milliseconds(500) })
+  }
+
+  func context(
+    method: FlashMethod = .swd, confirmedTarget: STM32Workflow.ConfirmedTarget? = nil
+  ) -> STM32Workflow.Context {
     var configuration = ProjectConfiguration()
     configuration.flash = method
     return .init(
-      project: project, configuration: configuration, cube: cube)
+      project: project, configuration: configuration, cube: cube, confirmedTarget: confirmedTarget)
   }
 
   func commands() throws -> String {

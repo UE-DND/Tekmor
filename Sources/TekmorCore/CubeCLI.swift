@@ -306,6 +306,29 @@ public struct CubeProgrammer: Sendable {
     try await read(connection, confirmedSerial: nil, reuseUART: false, log: log)
   }
 
+  /// Identifies the target before presenting confirmation, including an already synced UART session.
+  public func identifyTarget(
+    _ connection: ChipConnection, log: @escaping ToolLog = { _ in }
+  ) async throws -> ChipInformation {
+    do {
+      return try await read(connection, log: log)
+    } catch {
+      try Task.checkCancellation()
+      guard case .uart = connection, isPresent(connection) else { throw error }
+      return try await read(connection, confirmedSerial: nil, reuseUART: true, log: log)
+    }
+  }
+
+  func read(
+    _ connection: ChipConnection, confirming confirmed: ChipInformation?, log: @escaping ToolLog
+  ) async throws -> ChipInformation {
+    guard let confirmed else { return try await read(connection, log: log) }
+    let observed = try await read(
+      connection, confirmedSerial: confirmed.probeSerialNumber, reuseUART: true, log: log)
+    try checkTarget(observed, confirmed: confirmed)
+    return observed
+  }
+
   private func read(
     _ connection: ChipConnection, confirmedSerial: String?, reuseUART: Bool, log: @escaping ToolLog
   ) async throws -> ChipInformation {
@@ -444,9 +467,7 @@ public struct CubeProgrammer: Sendable {
       try image.intelHEX().write(to: snapshot)
       command = ["-w", snapshot.path, "-v"]
     }
-    let observed = try await read(
-      connection, confirmedSerial: confirmed.probeSerialNumber, reuseUART: true, log: log)
-    try checkTarget(observed, confirmed: confirmed)
+    _ = try await read(connection, confirming: confirmed, log: log)
     let result: CommandResult
     do {
       result = try await execute(
@@ -522,9 +543,7 @@ public struct CubeProgrammer: Sendable {
     _ connection: ChipConnection, confirmed: ChipInformation,
     log: @escaping ToolLog = { _ in }
   ) async throws {
-    let observed = try await read(
-      connection, confirmedSerial: confirmed.probeSerialNumber, reuseUART: true, log: log)
-    try checkTarget(observed, confirmed: confirmed)
+    _ = try await read(connection, confirming: confirmed, log: log)
     let result = try await execute(
       connection, ["-e", "all"], confirmedSerial: confirmed.probeSerialNumber, reuseUART: true,
       programming: true, timeout: .seconds(90), log: log)
@@ -560,13 +579,17 @@ public struct CubeProgrammer: Sendable {
 
   private func checkTarget(_ observed: ChipInformation, confirmed: ChipInformation) throws {
     guard observed.sameTarget(as: confirmed) else {
-      throw TekmorError(
-        TekmorLocalization.core(
-          .init(
-            "core.cube.targetChanged",
-            defaultValue: "Target chip information changed. Re-read and confirm the target.",
-            bundle: .atURL(Bundle.module.bundleURL))))
+      throw Self.targetChanged
     }
+  }
+
+  static var targetChanged: TekmorError {
+    TekmorError(
+      TekmorLocalization.core(
+        .init(
+          "core.cube.targetChanged",
+          defaultValue: "Target chip information changed. Re-read and confirm the target.",
+          bundle: .atURL(Bundle.module.bundleURL))))
   }
 
   private func resetCommand(

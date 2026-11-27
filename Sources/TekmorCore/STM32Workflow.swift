@@ -9,17 +9,31 @@ public struct STM32Workflow {
     case flash(URL, address: UInt64?, standalone: Bool)
   }
 
+  /// The connection and chip information shown together when an operation was confirmed.
+  public struct ConfirmedTarget: Sendable {
+    public let connection: ChipConnection
+    public let chip: ChipInformation
+
+    public init(connection: ChipConnection, chip: ChipInformation) {
+      self.connection = connection
+      self.chip = chip
+    }
+  }
+
   public struct Context: Sendable {
     public let project: URL?
     public let configuration: ProjectConfiguration
     public let cube: CubeCLI?
+    public let confirmedTarget: ConfirmedTarget?
 
     public init(
-      project: URL?, configuration: ProjectConfiguration, cube: CubeCLI?
+      project: URL?, configuration: ProjectConfiguration, cube: CubeCLI?,
+      confirmedTarget: ConfirmedTarget? = nil
     ) {
       self.project = project
       self.configuration = configuration
       self.cube = cube
+      self.confirmedTarget = confirmedTarget
     }
   }
 
@@ -169,6 +183,7 @@ public struct STM32Workflow {
     let connection: ChipConnection
     let cube: CubeCLI
     let expectedMCU: String?
+    let confirmedChip: ChipInformation?
   }
 
   private func requireCube(_ context: Context) throws -> CubeCLI {
@@ -187,9 +202,13 @@ public struct STM32Workflow {
     interaction: any Interaction
   ) throws -> FlashTarget {
     let (connection, _) = try interaction.selectFlashConnection(for: context.configuration.flash)
+    if let confirmed = context.confirmedTarget, confirmed.connection != connection {
+      throw CubeProgrammer.targetChanged
+    }
     return FlashTarget(
       connection: connection, cube: try requireCube(context),
-      expectedMCU: standalone ? nil : context.configuration.mcu)
+      expectedMCU: standalone ? nil : context.configuration.mcu,
+      confirmedChip: context.confirmedTarget?.chip)
   }
 
   private func flash(
@@ -213,7 +232,7 @@ public struct STM32Workflow {
     interaction: any Interaction, log: @escaping ToolLog
   ) async throws {
     interaction.receive(.stage(.readingChip))
-    let info = try await cube.read(target.connection, log: log)
+    let info = try await cube.read(target.connection, confirming: target.confirmedChip, log: log)
     interaction.receive(.chipRead(target.connection, info))
     try image.validateInternalFlash(capacity: info.flashBytes)
     try checkMCU(info, expected: target.expectedMCU)
@@ -258,7 +277,7 @@ public struct STM32Workflow {
     let cube = cubeProgrammer(target.cube)
     try await interaction.prepareProgrammerConnection(target.connection)
     interaction.receive(.stage(.readingChip))
-    let info = try await cube.read(target.connection, log: log)
+    let info = try await cube.read(target.connection, confirming: target.confirmedChip, log: log)
     interaction.receive(.chipRead(target.connection, info))
     try checkMCU(info, expected: target.expectedMCU)
     if erase {
