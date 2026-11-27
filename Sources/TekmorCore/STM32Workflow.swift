@@ -145,12 +145,11 @@ public struct STM32Workflow {
 
     interaction.receive(.stage(.listingPresets))
     let presets = CMakeBuild.sortedPresets(try await builder.presets(in: project, cli: cli))
-    if configuration.cmake.toolchainFile == nil,
-      configuration.cmake.configurePreset.map({ !presets.contains($0) }) ?? true
-    {
+    if configuration.cmake.toolchainFile == nil && configuration.cmake.configurePreset == nil {
       configuration.cmake.configurePreset = presets.first
     }
     interaction.receive(.presets(presets, selected: configuration.cmake.configurePreset))
+    try configuration.cmake.validateConfigurePreset(in: presets)
     try configuration.validate()
     interaction.receive(.stage(.configuring))
     let fresh = if case .reconfigure = action { true } else { false }
@@ -159,16 +158,21 @@ public struct STM32Workflow {
     interaction.receive(
       .configuredBuild(generator: selection.generator, toolsDescription: selection.toolsDescription)
     )
-    if let selected = configuration.cmake.target, !selection.targets.contains(selected) {
+    let inspecting =
+      switch action {
+      case .inspect, .reconfigure: true
+      default: false
+      }
+    let targetRemoved = configuration.cmake.target.map { !selection.targets.contains($0) } ?? false
+    if targetRemoved {
       configuration.cmake.target = nil
     }
-    if selection.targets.count == 1 { configuration.cmake.target = selection.targets[0] }
+    if selection.targets.count == 1, inspecting || !targetRemoved {
+      configuration.cmake.target = selection.targets[0]
+    }
     interaction.receive(.targets(selection.targets, selected: configuration.cmake.target))
 
-    switch action {
-    case .inspect, .reconfigure: return .inspected(selection.targets.count)
-    default: break
-    }
+    if inspecting { return .inspected(selection.targets.count) }
     guard let name = configuration.cmake.target else { return .awaitingTarget }
     interaction.receive(.stage(.building(name)))
     let elf = try await builder.build(name, selection: selection, log: log)

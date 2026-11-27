@@ -14,6 +14,7 @@
 /* CMakeBuild */
 "core.cmake.opListPresets" = "读取 CMake 配置预设";
 "core.cmake.missingPresetAndToolchain" = "此工程没有配置预设。请选择工程内的 CMake 工具链文件。";
+"core.cmake.unavailablePreset" = "CMake 预设“%@”不可用。请重新选择配置预设。";
 "core.cmake.toolchainNotFound" = "找不到 CMake 工具链文件 %@。";
 "core.cmake.opConfigure" = "配置 CMake";
 "core.cmake.missingFileAPI" = "CMake 没有生成 File API 目标清单。";

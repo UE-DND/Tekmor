@@ -14,6 +14,7 @@
 /* CMakeBuild */
 "core.cmake.opListPresets" = "Listing CMake configure presets";
 "core.cmake.missingPresetAndToolchain" = "This project has no configure presets. Select a CMake toolchain file inside the project.";
+"core.cmake.unavailablePreset" = "CMake preset “%@” is unavailable. Select a preset again.";
 "core.cmake.toolchainNotFound" = "CMake toolchain file \"%@\" not found.";
 "core.cmake.opConfigure" = "Configuring CMake";
 "core.cmake.missingFileAPI" = "CMake did not generate a File API target index.";

@@ -528,6 +528,7 @@ final class Workspace {
   }
   var canBuildProject: Bool {
     guard let target = configuration.cmake.target else { return false }
+    if let preset = configuration.cmake.configurePreset, !presets.contains(preset) { return false }
     return canConfigureProject && targets.contains(target)
   }
   var canRunProject: Bool {
@@ -726,11 +727,6 @@ final class Workspace {
         nextConfiguration.cmake.toolchainFile == nil
       {
         nextConfiguration.cmake.configurePreset = suggestedPresets.first
-      }
-      if let toolchain = nextConfiguration.cmake.toolchainFile,
-        !FileManager.default.fileExists(atPath: url.appendingPathComponent(toolchain).path)
-      {
-        nextConfiguration.cmake = CMakeSettings(configurePreset: suggestedPresets.first)
       }
       dropSerial()
       restoringProjectPreferences = true
@@ -1993,16 +1989,13 @@ final class Workspace {
         let builder = CMakeBuild()
         let names = CMakeBuild.sortedPresets(try await builder.presets(in: project, cli: cli))
         var current = options
-        if current.toolchainFile == nil {
-          if let preset = current.configurePreset, !names.contains(preset) {
-            current.configurePreset = names.first
-          } else if current.configurePreset == nil && chooseDefaultPreset {
-            current.configurePreset = names.first
-          }
+        if current.toolchainFile == nil, current.configurePreset == nil, chooseDefaultPreset {
+          current.configurePreset = names.first
         }
         guard targetDiscoveryID == token else { return }
         presets = names
         configuration.cmake.configurePreset = current.configurePreset
+        try current.validateConfigurePreset(in: names)
         guard current.configurePreset != nil || current.toolchainFile != nil else {
           receive(.targets([], selected: nil))
           return

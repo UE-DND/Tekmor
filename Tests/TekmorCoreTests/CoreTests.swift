@@ -922,6 +922,49 @@ func workflowRejectsChipChangedSinceConfirmation(erase: Bool) async throws {
 }
 
 @MainActor
+@Test(arguments: [false, true])
+func workflowStopsWhenTheSelectedPresetIsUnavailable(flash: Bool) async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  var configuration = ProjectConfiguration()
+  configuration.flash = .swd
+  configuration.cmake = CMakeSettings(configurePreset: "Release", target: "Blink")
+  let context = STM32Workflow.Context(
+    project: fixture.project, configuration: configuration, cube: fixture.cube)
+
+  await #expect(throws: TekmorError.self) {
+    try await fixture.workflow.execute(flash ? .run : .build, context: context, interaction: host)
+  }
+  #expect(host.presets == ["Debug"])
+  #expect(host.selectedPreset == "Release")
+  let commands = try fixture.commands()
+  #expect(!commands.contains(" --preset "))
+  #expect(!commands.contains("cmake --build"))
+  #expect(!commands.contains("programmer "))
+}
+
+@MainActor
+@Test func workflowDoesNotBuildTheOnlyRemainingTargetWhenSelectionDisappears() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let host = WorkflowHost(connection: .swd(fixture.probe))
+  var configuration = ProjectConfiguration()
+  configuration.flash = .swd
+  configuration.cmake = CMakeSettings(configurePreset: "Debug", target: "Other")
+  let context = STM32Workflow.Context(
+    project: fixture.project, configuration: configuration, cube: fixture.cube)
+
+  let result = try await fixture.workflow.execute(.run, context: context, interaction: host)
+  #expect(result == .awaitingTarget)
+  #expect(host.targets == ["Blink"])
+  #expect(host.selectedTarget == nil)
+  let commands = try fixture.commands()
+  #expect(!commands.contains("cmake --build"))
+  #expect(!commands.contains("programmer "))
+}
+
+@MainActor
 @Test func multipleCMakeTargetsRequireOrPreserveAnExplicitSelection() async throws {
   let fixture = try WorkflowFixture()
   defer { fixture.remove() }
@@ -993,6 +1036,8 @@ func workflowRejectsChipChangedSinceConfirmation(erase: Bool) async throws {
 private final class WorkflowHost: STM32Workflow.Interaction {
   let connection: ChipConnection
   var steps: [String] = []
+  var presets: [String] = []
+  var selectedPreset: String?
   var targets: [String] = []
   var selectedTarget: String?
   var artifact: URL?
@@ -1024,6 +1069,9 @@ private final class WorkflowHost: STM32Workflow.Interaction {
 
   func receive(_ event: STM32Workflow.Event) {
     switch event {
+    case .presets(let names, let selected):
+      presets = names
+      selectedPreset = selected
     case .targets(let names, let selected):
       targets = names
       selectedTarget = selected

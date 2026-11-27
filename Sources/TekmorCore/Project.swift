@@ -51,6 +51,19 @@ public struct CMakeSettings: Equatable, Sendable {
     self.target = target
     self.toolchainFile = toolchainFile
   }
+
+  /// Rejects a selected preset that is absent from CMake's current configure preset list.
+  public func validateConfigurePreset(in presets: [String]) throws {
+    if let configurePreset, !presets.contains(configurePreset) {
+      throw TekmorError(
+        TekmorLocalization.core(
+          .init(
+            "core.cmake.unavailablePreset",
+            defaultValue:
+              "CMake preset “\(configurePreset)” is unavailable. Select a preset again.",
+            bundle: .atURL(Bundle.module.bundleURL))))
+    }
+  }
 }
 
 public struct ProjectConfiguration: Equatable, Sendable {
