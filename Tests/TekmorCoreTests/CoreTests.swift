@@ -985,6 +985,48 @@ func workflowStopsWhenTheSelectedPresetIsUnavailable(flash: Bool) async throws {
 }
 
 @MainActor
+@Test(arguments: ["CMakeLists.txt", "cmake/targets.cmake"])
+func cachedSelectionRefreshesWhenConfigureInputChanges(path: String) async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let builder = CMakeBuild(cache: fixture.project.appendingPathComponent("cache"))
+  let options = CMakeSettings(configurePreset: "Debug")
+  let initial = try await builder.configure(
+    project: fixture.project, options: options, cli: fixture.cube)
+  #expect(initial.targets == ["Blink"])
+
+  let input = fixture.project.appending(path: path)
+  let date = try #require(
+    input.resourceValues(forKeys: [.contentModificationDateKey])
+      .contentModificationDate)
+  try "# Changed contents with identical modification date\n".write(
+    to: input, atomically: false, encoding: .utf8)
+  try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: input.path)
+  try Data().write(to: fixture.project.appendingPathComponent("multiple-targets"))
+  let refreshed = try await builder.configure(
+    project: fixture.project, options: options, cli: fixture.cube, preferCached: true)
+  #expect(refreshed.directory == initial.directory)
+  #expect(refreshed.targets == ["Blink", "Other"])
+}
+
+@MainActor
+@Test func cachedSelectionReconfiguresWithConfigureDependentGlobs() async throws {
+  let fixture = try WorkflowFixture()
+  defer { fixture.remove() }
+  let builder = CMakeBuild(cache: fixture.project.appendingPathComponent("cache"))
+  let options = CMakeSettings(configurePreset: "Debug")
+  try Data().write(to: fixture.project.appendingPathComponent("configure-dependent-glob"))
+  let initial = try await builder.configure(
+    project: fixture.project, options: options, cli: fixture.cube)
+  #expect(initial.targets == ["Blink"])
+
+  try Data().write(to: fixture.project.appendingPathComponent("multiple-targets"))
+  let refreshed = try await builder.configure(
+    project: fixture.project, options: options, cli: fixture.cube, preferCached: true)
+  #expect(refreshed.targets == ["Blink", "Other"])
+}
+
+@MainActor
 @Test func cachedSelectionReusesCMakeReplyAndCleanupIsScopedToProject() async throws {
   let fixture = try WorkflowFixture()
   defer { fixture.remove() }
@@ -1120,6 +1162,10 @@ private struct WorkflowFixture {
     try writeMockBundles(in: project)
     let database = project.appendingPathComponent("cmake/Data_Base")
     try FileManager.default.createDirectory(at: database, withIntermediateDirectories: true)
+    try Data("# Main configure input\n".utf8).write(
+      to: project.appendingPathComponent("CMakeLists.txt"))
+    try Data("# Included configure input\n".utf8).write(
+      to: project.appendingPathComponent("cmake/targets.cmake"))
     try
       "<Device><FlashSize><ReadRegister address=\"0x1FFF7A22\" mask=\"0xFFF\"/></FlashSize></Device>"
       .write(
@@ -1148,7 +1194,12 @@ private struct WorkflowFixture {
                 while [ "$1" != -B ]; do [ "$#" -gt 0 ] || exit 3; shift; done
                 reply="$2/.cmake/api/v1/reply"
                 /bin/mkdir -p "$reply"
-                printf '%s' '{"cmake":{"generator":{"name":"Ninja"}},"reply":{"codemodel-v2":{"jsonFile":"model.json"},"toolchains-v1":{"jsonFile":"toolchains.json"}}}' > "$reply/index-test.json"
+                printf '%s' '{"cmake":{"generator":{"name":"Ninja"}},"reply":{"codemodel-v2":{"jsonFile":"model.json"},"toolchains-v1":{"jsonFile":"toolchains.json"},"cmakeFiles-v1":{"jsonFile":"inputs.json"}}}' > "$reply/index-test.json"
+                globs='[]'
+                if [ -f "$root/configure-dependent-glob" ]; then
+                    globs='[{"expression":"src/*.c"}]'
+                fi
+                printf '{"version":{"minor":1},"inputs":[{"path":"CMakeLists.txt"},{"path":"cmake/targets.cmake"}],"globsDependent":%s}' "$globs" > "$reply/inputs.json"
                 printf '{"toolchains":[{"language":"C","compiler":{"path":"%s"}}]}\n' "$ARM_GNU_GCC" > "$reply/toolchains.json"
                 if [ -f "$root/multiple-targets" ]; then
                     printf '%s' '{"configurations":[{"targets":[{"name":"Blink","jsonFile":"target.json"},{"name":"Other","jsonFile":"target.json"}]}]}' > "$reply/model.json"

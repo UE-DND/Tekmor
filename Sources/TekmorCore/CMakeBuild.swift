@@ -14,6 +14,7 @@ public struct BuildSelection: Sendable {
 public struct CMakeBuild: Sendable {
   public static let defaultCache = URL.cachesDirectory.appendingPathComponent(
     "Tekmor/Builds", isDirectory: true)
+  private static let presetFilenames = ["CMakePresets.json", "CMakeUserPresets.json"]
   private let cache: URL
 
   public init(cache: URL = Self.defaultCache) {
@@ -30,11 +31,10 @@ public struct CMakeBuild: Sendable {
   public func presets(in project: URL, cli: CubeCLI) async throws -> [String] {
     let manager = FileManager.default
     guard
-      manager.fileExists(atPath: project.appendingPathComponent("CMakePresets.json").path)
-        || manager.fileExists(atPath: project.appendingPathComponent("CMakeUserPresets.json").path)
-    else {
-      return []
-    }
+      Self.presetFilenames.contains(where: {
+        manager.fileExists(atPath: project.appendingPathComponent($0).path)
+      })
+    else { return [] }
     let result = try await cli.run(["cmake", "--list-presets=configure"], in: project)
     try result.requireSuccess(
       TekmorLocalization.core(
@@ -58,12 +58,13 @@ public struct CMakeBuild: Sendable {
     let directory = try await buildDirectory(project: project, options: options, runtime: runtime)
     try Task.checkCancellation()
     let reply = directory.appendingPathComponent(".cmake/api/v1/reply")
-    let query = directory.appendingPathComponent(".cmake/api/v1/query/codemodel-v2")
+    let query = directory.appendingPathComponent(".cmake/api/v1/query")
+    let inputStamp = reply.appendingPathComponent(".tekmor-inputs")
     let root = cache.resolvingSymlinksInPath().standardizedFileURL
     guard
       directory.resolvingSymlinksInPath().standardizedFileURL.path
         == root.appendingPathComponent(directory.lastPathComponent).path,
-      isContained(query.deletingLastPathComponent(), in: directory),
+      isContained(query, in: directory),
       isContained(reply, in: directory)
     else {
       throw TekmorError(
@@ -75,19 +76,21 @@ public struct CMakeBuild: Sendable {
     }
     if preferCached, !fresh, Self.cachedProjectPath(in: directory) == project.path,
       let index = try? fileAPIIndex(in: reply),
+      let cachedStamp = try? Data(contentsOf: inputStamp),
+      let currentStamp = try? inputFingerprint(for: index, in: reply, project: project),
+      cachedStamp == currentStamp,
       let selection = try? selection(
-        from: index, in: reply, project: project, directory: directory, runtime: runtime)
+        from: index.model, in: reply, project: project, directory: directory, runtime: runtime)
     {
       return selection
     }
-    try files.createDirectory(
-      at: query.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Task.checkCancellation()
+    try files.createDirectory(at: query, withIntermediateDirectories: true)
     try Data(project.path.utf8).write(
       to: directory.appendingPathComponent(Self.ownershipFile), options: .atomic)
-    try Data().write(to: query, options: .atomic)
-    try Data().write(
-      to: query.deletingLastPathComponent().appendingPathComponent("toolchains-v1"),
-      options: .atomic)
+    for request in ["codemodel-v2", "toolchains-v1", "cmakeFiles-v1"] {
+      try Data().write(to: query.appendingPathComponent(request), options: .atomic)
+    }
     // Each successful configure must produce a new response for this query.
     if files.fileExists(atPath: reply.path) { try files.removeItem(at: reply) }
 
@@ -122,6 +125,7 @@ public struct CMakeBuild: Sendable {
       args += ["-G", "Ninja", "--toolchain", toolchainURL.path, "-DCMAKE_BUILD_TYPE=Debug"]
     }
     let configureArgs = ["cmake"] + (fresh ? ["--fresh"] : []) + args
+    let configureStarted = Date.now
     let result = try await runtime.cli.run(configureArgs, in: project, log: log)
     try result.requireSuccess(
       TekmorLocalization.core(
@@ -129,7 +133,7 @@ public struct CMakeBuild: Sendable {
           "core.cmake.opConfigure", defaultValue: "Configuring CMake",
           bundle: .atURL(Bundle.module.bundleURL))))
     var index = try fileAPIIndex(in: reply)
-    if index.cmake.generator.name == "Unix Makefiles" {
+    if index.model.cmake.generator.name == "Unix Makefiles" {
       try files.removeItem(at: reply)
       let configured = try await runtime.cli.run(
         ["cmake"] + args + ["-DCMAKE_MAKE_PROGRAM:FILEPATH=/usr/bin/make"], in: project, log: log)
@@ -140,11 +144,19 @@ public struct CMakeBuild: Sendable {
             bundle: .atURL(Bundle.module.bundleURL))))
       index = try fileAPIIndex(in: reply)
     }
-    return try selection(
-      from: index, in: reply, project: project, directory: directory, runtime: runtime)
+    let selection = try selection(
+      from: index.model, in: reply, project: project, directory: directory, runtime: runtime)
+    if isContained(reply, in: directory),
+      let stamp = try? inputFingerprint(
+        for: index, in: reply, project: project, unchangedSince: configureStarted)
+    {
+      try? stamp.write(to: inputStamp, options: .atomic)
+    }
+    try Task.checkCancellation()
+    return selection
   }
 
-  private func fileAPIIndex(in reply: URL) throws -> Index {
+  private func fileAPIIndex(in reply: URL) throws -> (name: String, model: Index) {
     let files = try FileManager.default.contentsOfDirectory(
       at: reply, includingPropertiesForKeys: nil)
     guard
@@ -159,7 +171,52 @@ public struct CMakeBuild: Sendable {
             defaultValue: "CMake did not generate a File API target index.",
             bundle: .atURL(Bundle.module.bundleURL))))
     }
-    return try load(Index.self, at: jsonFile(name, in: reply))
+    return (name, try load(Index.self, at: jsonFile(name, in: reply)))
+  }
+
+  private func inputFingerprint(
+    for index: (name: String, model: Index), in reply: URL, project: URL,
+    unchangedSince: Date? = nil
+  ) throws -> Data? {
+    guard let reference = index.model.reply["cmakeFiles-v1"] else { return nil }
+    let model = try load(ConfigureInputs.self, at: jsonFile(reference.jsonFile, in: reply))
+    // Let CMake expand configure-dependent globs and resolve included presets.
+    guard model.version.minor >= 1, model.globsDependent?.isEmpty != false,
+      !model.inputs.isEmpty, try !usesIncludedPresets(in: project)
+    else { return nil }
+
+    var fingerprint = SHA256()
+    fingerprint.update(data: Data(index.name.utf8))
+    for input in model.inputs {
+      try Task.checkCancellation()
+      let url =
+        input.path.hasPrefix("/") ? URL(filePath: input.path) : project.appending(path: input.path)
+      let file = url.resolvingSymlinksInPath()
+      let values = try file.resourceValues(forKeys: [
+        .isRegularFileKey, .contentModificationDateKey,
+      ])
+      guard values.isRegularFile == true else { return nil }
+      if let unchangedSince, input.isGenerated != true {
+        guard let modified = values.contentModificationDate, modified <= unchangedSince else {
+          return nil
+        }
+      }
+      let digest = try CubeInstallation.digest(file)
+      fingerprint.update(data: Data("\0\(file.path)\0\(digest)".utf8))
+    }
+    return Data(fingerprint.finalize())
+  }
+
+  private func usesIncludedPresets(in project: URL) throws -> Bool {
+    for filename in Self.presetFilenames {
+      let file = project.appendingPathComponent(filename)
+      if FileManager.default.fileExists(atPath: file.path),
+        try load(PresetIncludes.self, at: file).include?.isEmpty == false
+      {
+        return true
+      }
+    }
+    return false
   }
 
   private func selection(
@@ -307,7 +364,7 @@ public struct CMakeBuild: Sendable {
     identity.append(String(decoding: canonical, as: UTF8.self))
     identity += runtime.bundles.map { "\($0.id)|\($0.path?.path ?? "")" }
     identity += try await buildProgramIdentity(environment: runtime.cli.processEnvironment)
-    for path in ["CMakePresets.json", "CMakeUserPresets.json"] {
+    for path in Self.presetFilenames {
       let file = project.appendingPathComponent(path)
       if FileManager.default.fileExists(atPath: file.path) {
         identity.append(try CubeInstallation.digest(file))
@@ -408,6 +465,19 @@ public struct CMakeBuild: Sendable {
     let cmake: CMake
     let reply: [String: Reference]
   }
+  private struct ConfigureInputs: Decodable {
+    struct Version: Decodable { let minor: Int }
+    struct Input: Decodable {
+      let path: String
+      let isGenerated: Bool?
+    }
+    struct Glob: Decodable { let expression: String }
+    let version: Version
+    let inputs: [Input]
+    let globsDependent: [Glob]?
+  }
+  private struct PresetIncludes: Decodable { let include: [String]? }
+
   private struct CodeModel: Decodable {
     struct Configuration: Decodable {
       struct Target: Decodable {
