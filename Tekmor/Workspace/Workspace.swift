@@ -2023,7 +2023,8 @@ final class Workspace {
       } catch is CancellationError {
       } catch {
         guard targetDiscoveryID == token else { return }
-        receive(.targets([], selected: nil))
+        // An unsuccessful configure cannot tell whether the saved target still exists.
+        targets = []
       }
     }
   }

@@ -268,18 +268,18 @@ struct StatusBarView: View {
       )
     }
 
+    if workspace.targets.isEmpty {
+      return ReadinessGuidance(
+        text: l10n.tr(
+          .init("statusBar.guidance.loadTargets", defaultValue: "Load firmware targets")),
+        help: l10n.tr(
+          .init(
+            "help.guidance.loadTargets",
+            defaultValue: "Configure CMake and scan executable targets for this project")),
+        action: { workspace.start(.inspect) }
+      )
+    }
     if workspace.configuration.cmake.target == nil {
-      if workspace.targets.isEmpty {
-        return ReadinessGuidance(
-          text: l10n.tr(
-            .init("statusBar.guidance.loadTargets", defaultValue: "Load firmware targets")),
-          help: l10n.tr(
-            .init(
-              "help.guidance.loadTargets",
-              defaultValue: "Configure CMake and scan executable targets for this project")),
-          action: { workspace.start(.inspect) }
-        )
-      }
       return ReadinessGuidance(
         text: l10n.tr(
           .init("statusBar.guidance.selectTarget", defaultValue: "Select a target above")),
