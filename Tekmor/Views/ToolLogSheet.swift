@@ -1,5 +1,5 @@
 import SwiftUI
-import TekmorCore
+import TekmorWorkbench
 
 /// Modal sheet showing live STM32CubeCLI and managed bundle installation output without leaving
 /// the current view or mixing tool output into project build logs.

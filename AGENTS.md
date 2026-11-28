@@ -4,7 +4,8 @@ Tekmor is a native macOS STM32 build, flashing, and serial monitoring tool for A
 
 - `Tekmor/` is the SwiftUI application. `TekmorApp` is the entry point, and `Workspace` manages UI state, commands, and task lifecycles on the main actor.
 - `Sources/TekmorCore/` is the Swift Package core module. `STM32Workflow` orchestrates build, flash, and reset flows, with tool logic maintained in `CMakeBuild` and `CubeProgrammer`. External commands use `CommandRunner` for cancellation and timeout handling.
-- `Tests/TekmorCoreTests/` uses Swift Testing. Prefer reusing existing temporary project and command fixtures when verifying tool invocations or workflows.
+- `Sources/TekmorWorkbench/` contains the console buffer and search, build diagnostic locations, and workbench layout.
+- `Tests/TekmorCoreTests/` and `Tests/TekmorWorkbenchTests/` use Swift Testing. Prefer reusing existing temporary project and command fixtures when verifying tool invocations or workflows.
 - `Design/AppIcon/` contains the app icon's drawing source and generator.
 - `Distribution/` contains release packaging scripts.
 

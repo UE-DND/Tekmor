@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import TekmorCore
+import TekmorWorkbench
 
 /// Project controls and the dockable workbench.
 struct ProjectDetailView: View {

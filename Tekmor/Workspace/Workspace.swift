@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import SwiftUI
 import TekmorCore
+import TekmorWorkbench
 import UniformTypeIdentifiers
 
 @MainActor @Observable

@@ -1,7 +1,6 @@
 import Foundation
+import TekmorWorkbench
 import Testing
-
-@testable import TekmorCore
 
 @Suite("Build diagnostic location")
 struct BuildDiagnosticTests {

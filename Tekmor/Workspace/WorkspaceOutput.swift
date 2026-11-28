@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import TekmorCore
+import TekmorWorkbench
 
 @MainActor @Observable
 final class WorkspaceOutput {

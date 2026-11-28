@@ -1,8 +1,7 @@
 import CoreGraphics
 import Foundation
+import TekmorWorkbench
 import Testing
-
-@testable import TekmorCore
 
 @Suite("Workbench layout")
 struct WorkbenchLayoutTests {

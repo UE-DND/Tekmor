@@ -1,5 +1,5 @@
 import SwiftUI
-import TekmorCore
+import TekmorWorkbench
 
 /// Pure flat terminal & build-log viewport without redundant footer chrome.
 /// Follow state & metrics are coordinated directly with `Workspace` and the unified bottom `StatusBarView`.

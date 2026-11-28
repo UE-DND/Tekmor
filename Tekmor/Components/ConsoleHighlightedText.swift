@@ -1,5 +1,5 @@
 import SwiftUI
-import TekmorCore
+import TekmorWorkbench
 
 struct ConsoleHighlightedText: View {
   let text: String

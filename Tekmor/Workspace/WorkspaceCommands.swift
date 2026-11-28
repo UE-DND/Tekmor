@@ -1,5 +1,5 @@
 import SwiftUI
-import TekmorCore
+import TekmorWorkbench
 
 struct WorkspaceCommands: Commands {
   let l10n: AppL10n
