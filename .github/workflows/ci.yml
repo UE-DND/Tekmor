@@ -17,7 +17,7 @@ jobs:
       - name: Check Swift style
         run: >-
           xcrun swift-format lint --strict --recursive
-          Package.swift Sources Tekmor Tests Distribution/generate_icon.swift
+          Package.swift Sources Tekmor Tests Design
       - name: Test Swift core
         run: swift test
       - name: Build Tekmor.app

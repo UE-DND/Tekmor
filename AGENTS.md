@@ -5,7 +5,8 @@ Tekmor is a native macOS STM32 build, flashing, and serial monitoring tool for A
 - `Tekmor/` is the SwiftUI application. `TekmorApp` is the entry point, and `Workspace` manages UI state, commands, and task lifecycles on the main actor.
 - `Sources/TekmorCore/` is the Swift Package core module. `STM32Workflow` orchestrates build, flash, and reset flows, with tool logic maintained in `CMakeBuild` and `CubeProgrammer`. External commands use `CommandRunner` for cancellation and timeout handling.
 - `Tests/TekmorCoreTests/` uses Swift Testing. Prefer reusing existing temporary project and command fixtures when verifying tool invocations or workflows.
-- `Distribution/` contains icon generation and release packaging scripts.
+- `Design/AppIcon/` contains the app icon's drawing source and generator.
+- `Distribution/` contains release packaging scripts.
 
 ## Swift Style Guide
 
@@ -20,7 +21,7 @@ References: [Swift API Design Guidelines](https://www.swift.org/documentation/ap
 Formatting follows the repository root `.swift-format` (2-space indentation, 100-column line width). Format and run strict lint checks matching CI:
 
 ```bash
-swift_sources=(Package.swift Sources Tekmor Tests Distribution/generate_icon.swift)
+swift_sources=(Package.swift Sources Tekmor Tests Design)
 xcrun swift-format format -ir "${swift_sources[@]}"
 xcrun swift-format lint -sr "${swift_sources[@]}"
 ```

@@ -4,7 +4,7 @@ import CoreGraphics
 import Foundation
 
 // Generates the Chronos-family minimal flat geometric AppIcon set for Tekmor.
-// Usage: swift Distribution/generate_icon.swift
+// Usage: swift Design/AppIcon/generate.swift
 
 struct IconSpec {
   let filename: String
@@ -336,8 +336,9 @@ func savePNG(_ image: CGImage, to url: URL) throws {
   try data.write(to: url, options: .atomic)
 }
 
-let scriptURL = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
-let repoRoot = scriptURL.deletingLastPathComponent().deletingLastPathComponent()
+let sourceDir = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
+  .deletingLastPathComponent()
+let repoRoot = sourceDir.deletingLastPathComponent().deletingLastPathComponent()
 let iconsetDir = repoRoot.appendingPathComponent(
   "Tekmor/Assets.xcassets/AppIcon.appiconset", isDirectory: true)
 
