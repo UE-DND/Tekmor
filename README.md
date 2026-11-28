@@ -6,8 +6,6 @@
 
 由 CubeCLI 驱动的 STM32 工具箱，macOS 原生
 
-**[Ask DeepWiki](https://deepwiki.com/UE-DND/Tekmor)**
-
 ![mockup](.github/assets/mockup.png)
 
 </div>
@@ -32,6 +30,6 @@ xcodebuild -project Tekmor.xcodeproj -scheme Tekmor -configuration Debug \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode build
 ```
 
-## 贡献代码
+## 隐私政策
 
-若发现问题，欢迎任何形式的贡献！无论是修复错误、改进功能，还是提升代码质量，我们都非常欢迎您的参与。
+本应用不收集您的任何数据，不会将任何信息传输至其他联网系统。
